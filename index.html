@@ -299,9 +299,7 @@ header {
 // ═══════════════════════════════════════════════════════
 // CONFIGURAÇÃO DA API
 // ═══════════════════════════════════════════════════════
-const API_BASE = window.location.hostname === 'localhost'
-  ? 'http://localhost:3001'   // desenvolvimento local
-  : '';                        // Vercel: usa /api/estimativas direto
+// API chamada direto — sem proxy necessário                        // Vercel: usa /api/estimativas direto
 const PONTO_ID  = 415;   // ID interno do ponto 440156
 const PONTO_COD = '440156';
 
@@ -535,12 +533,19 @@ async function carregarEstimativas(ponto) {
   document.getElementById('refresh-lbl').textContent = 'Atualizando...';
 
   try {
-    const res = await fetch(`${API_BASE}/api/estimativas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
-      signal: AbortSignal.timeout(8000)
-    });
+    const res = await fetch(
+      'https://gvbus-previsao.geocontrol.com.br/pontual-previsao/svc/estimativas/obterEstimativasPorOrigem',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': 'https://gvbus-previsao.geocontrol.com.br',
+          'Referer': 'https://gvbus-previsao.geocontrol.com.br/previsao/desktop.html',
+        },
+        body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
+        signal: AbortSignal.timeout(8000)
+      }
+    );
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -549,7 +554,9 @@ async function carregarEstimativas(ponto) {
     document.getElementById('refresh-lbl').textContent = `Atualizado às ${hora}`;
 
   } catch(e) {
-    renderErroProxy(ponto, e.message);
+    // CORS bloqueado — usar modo no-cors como fallback não retorna dados
+    // Mostrar snapshot estático com aviso
+    renderSemProxy(ponto, e.message);
     document.getElementById('refresh-lbl').textContent = 'Erro ao atualizar';
   }
 }
@@ -647,24 +654,13 @@ function renderEstimativas(data, ponto) {
     </div>`;
 }
 
-function renderErroProxy(ponto, msg) {
+function renderSemProxy(ponto, msg) {
   document.getElementById('det-content').innerHTML = `
     <div class="erro-box">
-      <strong>⚠️ Proxy não encontrado</strong>
-      O app precisa do proxy rodando em <code>localhost:3001</code> para buscar dados em tempo real da API Geocontrol.<br><br>
-      Adicione ao seu <strong>server.js</strong>:
-      <pre style="margin-top:8px;background:#fff;padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;border:1px solid #fecdd3">
-app.post('/geocontrol/estimativas', async (req, res) => {
-  const r = await axios.post(
-    'https://gvbus-previsao.geocontrol.com.br' +
-    '/pontual-previsao/svc/estimativas/obterEstimativasPorOrigem',
-    req.body,
-    { headers: { 'Content-Type': 'application/json',
-      'Origin': 'https://gvbus-previsao.geocontrol.com.br' } }
-  )
-  res.json(r.data)
-})</pre>
-      <small style="color:#999">Erro: ${msg}</small>
+      <strong>⚠️ Não foi possível buscar dados em tempo real</strong>
+      A API Geocontrol bloqueou a requisição direta do browser (CORS).<br><br>
+      Exibindo o último snapshot disponível abaixo.<br>
+      <small style="color:#999;margin-top:4px;display:block">Erro técnico: ${msg}</small>
     </div>
     <div class="est-section">
       <div class="est-label">Dados do último snapshot (09:21)</div>
