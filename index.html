@@ -251,6 +251,93 @@ header {
 
 
 
+/* ── Painel de notificações ── */
+#notif-fab {
+  position: fixed;
+  bottom: calc(52vh + 16px);
+  left: 16px;
+  width: 46px; height: 46px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; z-index: 400;
+  transition: background .15s;
+}
+#notif-fab:hover { background: var(--surface2); }
+#notif-fab.ativo {
+  background: rgba(0,196,140,.12);
+  border-color: rgba(0,196,140,.4);
+}
+
+#notif-panel {
+  position: fixed;
+  bottom: calc(52vh + 70px);
+  left: 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 16px;
+  width: 280px;
+  z-index: 450;
+  display: none;
+}
+#notif-panel.open { display: block; }
+
+.notif-title {
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.notif-close {
+  font-size: 16px; cursor: pointer; color: var(--muted);
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; transition: background .12s;
+}
+.notif-close:hover { background: var(--surface2); }
+
+.alarme-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--surface2);
+}
+.alarme-row:last-child { border-bottom: none; }
+.alarme-info { flex: 1; min-width: 0; }
+.alarme-label { font-size: 13px; font-weight: 600; }
+.alarme-horario { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.toggle-switch {
+  position: relative; width: 40px; height: 22px; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--border); border-radius: 22px;
+  cursor: pointer; transition: background .2s;
+}
+.toggle-slider:before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px;
+  left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--green); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+.notif-status {
+  font-size: 11px; color: var(--muted);
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--surface2);
+  font-family: var(--mono);
+  line-height: 1.5;
+}
+.notif-status.ok { color: var(--green); }
+
 /* ── Modo foco (ônibus selecionado) ── */
 #modo-foco {
   display: none;
@@ -406,6 +493,40 @@ header {
 
   <div id="map"></div>
   <div id="fab-geo" onclick="centerUser()">📍</div>
+  <div id="notif-fab" onclick="toggleNotifPanel()" title="Alertas">🔔</div>
+
+  <div id="notif-panel">
+    <div class="notif-title">
+      Alertas de ônibus
+      <span class="notif-close" onclick="toggleNotifPanel()">✕</span>
+    </div>
+
+    <div class="alarme-row">
+      <div class="alarme-info">
+        <div class="alarme-label">🏠 Saída de casa</div>
+        <div class="alarme-horario">Seg–Sex · avisa às 06:20 · ponto 440098</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-casa" onchange="salvarAlarmes()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="alarme-row">
+      <div class="alarme-info">
+        <div class="alarme-label">💼 Saída do trabalho</div>
+        <div class="alarme-horario">Seg–Sex · avisa às 17:18 · ponto 440156</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-trab" onchange="salvarAlarmes()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="notif-status" id="notif-status">
+      Ative as notificações do browser para receber alertas.
+    </div>
+  </div>
 
 
 
@@ -1070,6 +1191,259 @@ function expandSheet()  { document.getElementById('sheet').classList.add('expand
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// NOTIFICAÇÕES E ALERTAS
+// ═══════════════════════════════════════════════════════
+
+// Configuração dos alarmes fixos (horário que o alerta dispara)
+const ALARMES = [
+  {
+    id: 'casa',
+    label: 'Saída de casa',
+    horario: '06:20',      // 10min antes das 06:30
+    pontoId: 116,          // ponto 440098 — Av. José Moreira
+    linhaId: 564,          // linha 523
+    toggleId: 'toggle-casa'
+  },
+  {
+    id: 'trab',
+    label: 'Saída do trabalho',
+    horario: '17:18',      // 10min antes das 17:28
+    pontoId: 415,          // ponto 440156 — Av. Talma
+    linhaId: 564,          // linha 523
+    toggleId: 'toggle-trab'
+  }
+];
+
+let swRegistration = null;
+let notifTimers = {};
+
+// Registrar Service Worker
+async function iniciarSW() {
+  if (!('serviceWorker' in navigator)) return false;
+  try {
+    swRegistration = await navigator.serviceWorker.register('/sw.js');
+    console.log('✅ SW registrado');
+    return true;
+  } catch(e) {
+    console.warn('SW falhou:', e.message);
+    return false;
+  }
+}
+
+// Pedir permissão de notificação
+async function pedirPermissao() {
+  if (!('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'granted') return 'granted';
+  const result = await Notification.requestPermission();
+  return result;
+}
+
+// Verificar se hoje é feriado ou fim de semana
+async function ehDiaUtil() {
+  const hoje = new Date();
+  const dow = hoje.getDay();
+  if (dow === 0 || dow === 6) return false; // fim de semana
+
+  try {
+    const ano = hoje.getFullYear();
+    const res = await fetch(`https://brasilapi.com.br/api/feriados/v1/${ano}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    const feriados = await res.json();
+    const dataHoje = hoje.toISOString().split('T')[0];
+    return !feriados.some(f => f.date === dataHoje);
+  } catch(e) {
+    return true; // em caso de erro, assume dia útil
+  }
+}
+
+// Buscar estimativa e enviar notificação
+async function verificarENotificar(alarme) {
+  const diaUtil = await ehDiaUtil();
+  if (!diaUtil) {
+    console.log(`[Alarme ${alarme.id}] Feriado/fim de semana — suprimido`);
+    atualizarStatusNotif();
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/estimativas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pontoDeOrigemId: alarme.pontoId, linhaId: alarme.linhaId }),
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await res.json();
+    const agora = data.horarioDoServidor || Date.now();
+
+    const prox = (data.estimativas || [])
+      .filter(e => e.horarioNaOrigem > agora)
+      .sort((a, b) => a.horarioNaOrigem - b.horarioNaOrigem)[0];
+
+    if (!prox) {
+      notificar(alarme.label, 'Sem ônibus encontrado para este horário.', '⚠️');
+      return;
+    }
+
+    const diffMin = Math.round((prox.horarioNaOrigem - agora) / 60000);
+    const extras = [];
+    if (prox.arCondicionado) extras.push('❄️ A/C');
+    if (prox.wifi)           extras.push('📶 Wi-Fi');
+    if (prox.accessibility)  extras.push('♿');
+
+    const body = diffMin <= 2
+      ? `Ônibus chegando agora! Veículo ${prox.veiculo} ${extras.join(' ')}`
+      : `Próximo ônibus em ${diffMin} min — Veículo ${prox.veiculo} ${extras.join(' ')}`;
+
+    notificar('🚌 Linha 523 — ' + alarme.label, body, null);
+    console.log(`[Alarme ${alarme.id}] Notificado: ${diffMin}min`);
+
+  } catch(e) {
+    console.warn(`[Alarme ${alarme.id}] Erro:`, e.message);
+  }
+}
+
+function notificar(titulo, corpo, icon) {
+  if (Notification.permission !== 'granted') return;
+  new Notification(titulo, {
+    body: corpo,
+    icon: icon || '/favicon.ico',
+    badge: '/favicon.ico',
+    tag: 'transcol-alerta',
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [200, 100, 200]
+  });
+}
+
+// Agendar alarme usando setTimeout preciso
+function agendarAlarme(alarme) {
+  // Cancelar timer anterior se existir
+  if (notifTimers[alarme.id]) {
+    clearTimeout(notifTimers[alarme.id]);
+    delete notifTimers[alarme.id];
+  }
+
+  const agora = new Date();
+  const [h, m] = alarme.horario.split(':').map(Number);
+  const alvo = new Date(agora);
+  alvo.setHours(h, m, 0, 0);
+
+  // Se o horário já passou hoje, agenda para amanhã
+  if (alvo <= agora) alvo.setDate(alvo.getDate() + 1);
+
+  const delay = alvo.getTime() - agora.getTime();
+  const minutos = Math.round(delay / 60000);
+  console.log(`[Alarme ${alarme.id}] Agendado para ${alvo.toLocaleTimeString('pt-BR')} (em ${minutos}min)`);
+
+  notifTimers[alarme.id] = setTimeout(async () => {
+    await verificarENotificar(alarme);
+    // Re-agendar para o próximo dia
+    agendarAlarme(alarme);
+  }, delay);
+}
+
+function cancelarAlarme(alarmeId) {
+  if (notifTimers[alarmeId]) {
+    clearTimeout(notifTimers[alarmeId]);
+    delete notifTimers[alarmeId];
+    console.log(`[Alarme ${alarmeId}] Cancelado`);
+  }
+}
+
+// Salvar estado dos toggles e (re)agendar
+async function salvarAlarmes() {
+  const perm = await pedirPermissao();
+  if (perm !== 'granted') {
+    atualizarStatusNotif('negada');
+    // Desativar todos os toggles
+    ALARMES.forEach(a => {
+      document.getElementById(a.toggleId).checked = false;
+    });
+    return;
+  }
+
+  ALARMES.forEach(alarme => {
+    const ativo = document.getElementById(alarme.toggleId).checked;
+    localStorage.setItem('alarme_' + alarme.id, ativo ? '1' : '0');
+    if (ativo) agendarAlarme(alarme);
+    else cancelarAlarme(alarme.id);
+  });
+
+  // Ícone do FAB
+  const algumAtivo = ALARMES.some(a => document.getElementById(a.toggleId).checked);
+  document.getElementById('notif-fab').classList.toggle('ativo', algumAtivo);
+
+  atualizarStatusNotif(perm);
+}
+
+async function atualizarStatusNotif(permOverride) {
+  const el = document.getElementById('notif-status');
+  const perm = permOverride || Notification.permission;
+
+  if (perm === 'negada' || perm === 'denied') {
+    el.className = 'notif-status';
+    el.textContent = '❌ Permissão negada. Habilite notificações nas configurações do browser.';
+    return;
+  }
+
+  if (!('Notification' in window)) {
+    el.className = 'notif-status';
+    el.textContent = '⚠️ Notificações não suportadas neste browser.';
+    return;
+  }
+
+  // Verificar feriado
+  const diaUtil = await ehDiaUtil();
+  const hoje = new Date();
+  const dow = hoje.getDay();
+  const diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const ativos = ALARMES.filter(a => document.getElementById(a.toggleId)?.checked);
+  if (ativos.length === 0) {
+    el.className = 'notif-status';
+    el.textContent = 'Nenhum alerta ativo.';
+    return;
+  }
+
+  const proximos = ativos.map(a => {
+    const [h, m] = a.horario.split(':').map(Number);
+    const alvo = new Date();
+    alvo.setHours(h, m, 0, 0);
+    if (alvo <= new Date()) alvo.setDate(alvo.getDate() + 1);
+    const diff = Math.round((alvo - new Date()) / 60000);
+    return `${a.label}: ${a.horario} (em ${diff}min)`;
+  });
+
+  el.className = 'notif-status ok';
+  el.innerHTML = (diaUtil ? '✅ Ativo' : '📅 Feriado hoje — pausado') + '<br>' + proximos.join('<br>');
+}
+
+// Toggle painel
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) atualizarStatusNotif();
+}
+
+// Restaurar estado salvo no localStorage
+async function restaurarAlarmes() {
+  await iniciarSW();
+  const perm = Notification.permission;
+
+  ALARMES.forEach(alarme => {
+    const salvo = localStorage.getItem('alarme_' + alarme.id);
+    if (salvo === '1' && perm === 'granted') {
+      document.getElementById(alarme.toggleId).checked = true;
+      agendarAlarme(alarme);
+    }
+  });
+
+  const algumAtivo = ALARMES.some(a => localStorage.getItem('alarme_' + a.id) === '1' && perm === 'granted');
+  document.getElementById('notif-fab').classList.toggle('ativo', algumAtivo);
+}
+
 window.abrirPonto = abrirPonto;
 window.abrirPontoDinamico = abrirPontoDinamico;
 window.abrirModoFoco = abrirModoFoco;
@@ -1288,7 +1662,10 @@ function sairModoFoco() {
   _rotaDesenhadaKey = null;
 }
 
-window.addEventListener('load', initMap);
+window.addEventListener('load', () => {
+  initMap();
+  restaurarAlarmes();
+});
 </script>
 </body>
 </html>
