@@ -147,6 +147,10 @@ header {
 .refresh-btn:hover { color:var(--accent); border-color:var(--accent); }
 .refresh-btn.spinning span { display:inline-block; animation:spin .7s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
+@keyframes pulseOnibus {
+  0%,100% { box-shadow: 0 0 0 4px rgba(26,110,245,.25), 0 3px 12px rgba(0,0,0,.3); }
+  50%      { box-shadow: 0 0 0 8px rgba(26,110,245,.15), 0 3px 16px rgba(0,0,0,.3); }
+}
 
 /* ── Estimativas ── */
 .est-section { padding:14px 20px 0; }
@@ -243,50 +247,7 @@ header {
 }
 .marker-ponto-dot.favorito .inner::after { content:'⭐'; }
 
-/* Barra flutuante de ônibus selecionado */
-#bus-bar {
-  position:fixed;
-  bottom: calc(52vh + 8px);
-  left:16px; right:68px;
-  background:var(--surface);
-  border:1.5px solid var(--accent);
-  border-radius:16px;
-  padding:12px 16px;
-  box-shadow:var(--shadow-lg);
-  z-index:450;
-  display:none;
-  align-items:center;
-  gap:12px;
-  transition:all .25s;
-}
-#bus-bar.visible { display:flex; }
-.bus-bar-linha {
-  font-family:var(--mono);
-  font-size:13px; font-weight:600;
-  padding:4px 10px;
-  background:rgba(26,110,245,.1);
-  color:var(--accent);
-  border:1px solid rgba(26,110,245,.25);
-  border-radius:8px;
-  flex-shrink:0;
-}
-.bus-bar-info { flex:1; min-width:0; }
-.bus-bar-tempo {
-  font-size:18px; font-weight:800;
-  color:var(--text); line-height:1;
-}
-.bus-bar-tempo span { font-size:12px; font-weight:500; color:var(--muted); }
-.bus-bar-desc { font-size:11px; color:var(--muted); margin-top:2px; font-family:var(--mono); }
-.bus-bar-close {
-  width:28px; height:28px;
-  border-radius:8px;
-  background:var(--surface2);
-  border:1px solid var(--border);
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:14px; flex-shrink:0;
-  color:var(--muted);
-}
-.bus-bar-close:hover { background:var(--border); }
+/* barra removida */
 
 /* Loading de pontos no mapa */
 #map-loading {
@@ -311,6 +272,103 @@ header {
   border-top-color:var(--accent);
   border-radius:50%;
   animation:spin .7s linear infinite;
+}
+
+/* ── Modo foco (ônibus selecionado) ── */
+#modo-foco {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  flex-direction: column;
+  background: var(--bg);
+}
+#modo-foco.active { display: flex; }
+
+.foco-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+.foco-back {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; flex-shrink: 0;
+  transition: background .12s;
+}
+.foco-back:hover { background: var(--border); }
+.foco-linha {
+  font-family: var(--mono);
+  font-size: 13px; font-weight: 600;
+  padding: 4px 12px;
+  background: rgba(26,110,245,.1);
+  color: var(--accent);
+  border: 1px solid rgba(26,110,245,.25);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.foco-titulo { font-size: 15px; font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foco-update {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-align: right;
+  line-height: 1.4;
+}
+.foco-update.live { color: var(--green); }
+
+#foco-map { flex: 1; min-height: 0; }
+
+.foco-bottom {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+  flex-shrink: 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+}
+.foco-countdown {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  color: #fff;
+  margin-bottom: 12px;
+}
+.foco-countdown.normal   { background: linear-gradient(135deg,#1a6ef5,#0d4fd4); }
+.foco-countdown.iminente { background: linear-gradient(135deg,#f5820a,#d96200); }
+.foco-countdown.chegando { background: linear-gradient(135deg,#e53935,#c62828); }
+.foco-num {
+  font-family: var(--mono);
+  font-size: 48px; font-weight: 500;
+  letter-spacing: -2px; line-height: 1;
+  min-width: 90px;
+}
+.foco-num sub { font-size: 20px; opacity: .8; letter-spacing: 0; }
+.foco-desc-label { font-size: 14px; font-weight: 700; }
+.foco-desc-sub { font-size: 12px; opacity: .8; margin-top: 3px; font-family: var(--mono); }
+.foco-extras { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.foco-extra-tag {
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.3);
+  font-family: var(--mono);
+}
+.foco-veiculo {
+  font-size: 12px; color: var(--muted);
+  font-family: var(--mono);
+  text-align: center;
 }
 
 /* ── Leaflet ── */
@@ -341,6 +399,28 @@ header {
   <div class="load-txt">Carregando mapa...</div>
 </div>
 
+<!-- Modo foco: ônibus selecionado -->
+<div id="modo-foco">
+  <div class="foco-header">
+    <div class="foco-back" onclick="sairModoFoco()">←</div>
+    <div class="foco-linha" id="foco-linha">523</div>
+    <div class="foco-titulo" id="foco-titulo">Veículo –</div>
+    <div class="foco-update" id="foco-update">–</div>
+  </div>
+  <div id="foco-map"></div>
+  <div class="foco-bottom">
+    <div class="foco-countdown normal" id="foco-countdown">
+      <div class="foco-num" id="foco-num">–<sub>min</sub></div>
+      <div>
+        <div class="foco-desc-label" id="foco-label">Calculando...</div>
+        <div class="foco-desc-sub" id="foco-sub">–</div>
+        <div class="foco-extras" id="foco-extras"></div>
+      </div>
+    </div>
+    <div class="foco-veiculo" id="foco-veiculo-info">–</div>
+  </div>
+</div>
+
 <div id="app">
   <header>
     <div class="logo"><div class="logo-icon">🚌</div>TRANSCOL</div>
@@ -349,16 +429,6 @@ header {
 
   <div id="map"></div>
   <div id="fab-geo" onclick="centerUser()">📍</div>
-
-  <!-- Barra de ônibus selecionado -->
-  <div id="bus-bar">
-    <div class="bus-bar-linha" id="bb-linha">523</div>
-    <div class="bus-bar-info">
-      <div class="bus-bar-tempo" id="bb-tempo">– <span>min</span></div>
-      <div class="bus-bar-desc" id="bb-desc">Selecione um ônibus no mapa</div>
-    </div>
-    <div class="bus-bar-close" onclick="fecharBusBar()">✕</div>
-  </div>
 
   <!-- Indicador de carregamento de pontos -->
   <div id="map-loading">
@@ -903,6 +973,20 @@ function renderEstimativas(data, ponto) {
     if (e.accessibility)  icons.push('<span class="est-icon" title="Acessível">♿</span>');
     if (e.arCondicionado) icons.push('<span class="est-icon" title="Ar-condicionado">❄️</span>');
     if (e.wifi)           icons.push('<span class="est-icon" title="Wi-Fi">📶</span>');
+    const estJson = encodeURIComponent(JSON.stringify({
+      pontoDeParadaId: e.pontoDeParadaId,
+      linhaId: e.linhaId,
+      itinerarioId: e.itinerarioId,
+      horarioNaOrigem: e.horarioNaOrigem,
+      horarioDaTransmissao: e.horarioDaTransmissao,
+      veiculo: e.veiculo,
+      veiculoId: e.veiculoId,
+      busStopPosition: e.busStopPosition,
+      busStopFinalPosition: e.busStopFinalPosition,
+      accessibility: e.accessibility,
+      arCondicionado: e.arCondicionado,
+      wifi: e.wifi,
+    }));
     return `
       <div class="est-row">
         <div class="est-linha-badge">${nome}</div>
@@ -910,21 +994,37 @@ function renderEstimativas(data, ponto) {
           <div class="est-veiculo">Veículo ${e.veiculo}</div>
           ${icons.length ? `<div class="est-icons">${icons.join('')}</div>` : ''}
         </div>
-        <div class="est-tempo ${cls}">${dM} min</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <div class="est-tempo ${cls}">${dM} min</div>
+          <button onclick="_verNoMapa('${estJson}')" style="font-size:16px;background:none;border:none;cursor:pointer;padding:2px" title="Ver no mapa">🗺️</button>
+        </div>
       </div>`;
   }).join('');
+
+  // Serializar primeira estimativa para o botão do hero
+  const heroEstJson = encodeURIComponent(JSON.stringify({
+    pontoDeParadaId: prox.pontoDeParadaId,
+    linhaId: prox.linhaId, itinerarioId: prox.itinerarioId,
+    horarioNaOrigem: prox.horarioNaOrigem, horarioDaTransmissao: prox.horarioDaTransmissao,
+    veiculo: prox.veiculo, veiculoId: prox.veiculoId,
+    busStopPosition: prox.busStopPosition, busStopFinalPosition: prox.busStopFinalPosition,
+    accessibility: prox.accessibility, arCondicionado: prox.arCondicionado, wifi: prox.wifi,
+  }));
 
   document.getElementById('det-content').innerHTML = `
     <div class="est-section">
       <div class="est-label">Próxima chegada</div>
       ${heroHtml}
-      ${lista.length > 1 ? `<div class="est-label" style="margin-top:14px;">A seguir</div>${rows}` : ''}
+      <button onclick="_verNoMapa('${heroEstJson}')" style="
+        width:100%;margin:10px 0;padding:12px;
+        background:var(--accent);color:#fff;border:none;border-radius:12px;
+        font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:8px;
+      ">🗺️ Ver ônibus no mapa ao vivo</button>
+      ${lista.length > 1 ? `<div class="est-label" style="margin-top:6px;">A seguir</div>${rows}` : ''}
     </div>`;
 
-  // Atualizar barra flutuante com a próxima chegada
-  if (lista.length > 0) {
-    mostrarBusBar(nomeLinha, diffMin, prox.veiculo, prox);
-  }
+
 }
 
 function renderSemProxy(ponto, msg) {
@@ -1010,43 +1110,196 @@ function expandSheet()  { document.getElementById('sheet').classList.add('expand
 // ═══════════════════════════════════════════════════════
 window.abrirPonto = abrirPonto;
 window.abrirPontoDinamico = abrirPontoDinamico;
-window.fecharBusBar = fecharBusBar;
+window.abrirModoFoco = abrirModoFoco;
+window._verNoMapa = function(estJson) {
+  const est = JSON.parse(decodeURIComponent(estJson));
+  if (pontoAtivo) {
+    abrirModoFoco(est, pontoAtivo.pontoId, pontoAtivo.nome, pontoAtivo.lat, pontoAtivo.lng);
+  }
+};
+window.sairModoFoco = sairModoFoco;
 
-// ── BARRA FLUTUANTE DE ÔNIBUS ────────────────────────────
-function mostrarBusBar(linha, diffMin, veiculo, extras) {
-  const bar = document.getElementById('bus-bar');
-  const bbLinha = document.getElementById('bb-linha');
-  const bbTempo = document.getElementById('bb-tempo');
-  const bbDesc  = document.getElementById('bb-desc');
+// ═══════════════════════════════════════════════════════
+// MODO FOCO — ÔNIBUS SELECIONADO
+// ═══════════════════════════════════════════════════════
+let FOCO_MAP = null, focoOnibusMark = null, focoPontoMark = null;
+let focoPolylines = [], focoTimer = null, focoEstimativa = null;
+let focoPontoId = null, focoPontoLat = null, focoPontoLng = null;
 
-  bbLinha.textContent = 'Linha ' + linha;
-  bbTempo.innerHTML   = diffMin + '<span> min</span>';
+// Rota real da linha 523: T.Jacaraipe → Vitória → T.Jardim América (via Beira Mar)
+const ROTA_523 = [
+  [-20.0821,-40.0736],[-20.0873,-40.0798],[-20.0914,-40.0843],
+  [-20.0968,-40.0921],[-20.1022,-40.1012],[-20.1089,-40.1098],
+  [-20.1154,-40.1203],[-20.1210,-40.1289],[-20.1287,-40.1356],
+  [-20.1352,-40.1434],[-20.1432,-40.1512],[-20.1489,-40.1598],
+  [-20.1567,-40.1689],[-20.1635,-40.1754],[-20.1703,-40.1821],
+  [-20.1780,-40.1934],[-20.1854,-40.2043],[-20.1920,-40.2156],
+  [-20.1977,-40.2268],[-20.2015,-40.2334],[-20.2043,-40.2401],
+  [-20.2098,-40.2478],[-20.2156,-40.2534],[-20.2201,-40.2578],
+  [-20.2248,-40.2612],[-20.2310,-40.2645],[-20.2431,-40.2688],
+  [-20.2510,-40.2701],[-20.2580,-40.2720],
+];
 
-  const extrasStr = [];
-  if (extras?.accessibility)  extrasStr.push('♿');
-  if (extras?.arCondicionado) extrasStr.push('❄️');
-  if (extras?.wifi)           extrasStr.push('📶');
+// Sentido volta: Vitória → Jacaraipe (passa pelo 440156)
+const ROTA_523_VOLTA = [...ROTA_523].reverse();
 
-  bbDesc.textContent = `Veículo ${veiculo}${extrasStr.length ? ' · ' + extrasStr.join(' ') : ''}`;
-
-  // Cor conforme urgência
-  bar.style.borderColor = diffMin <= 3 ? 'var(--danger)' : diffMin <= 8 ? 'var(--warn)' : 'var(--accent)';
-  bbTempo.style.color   = diffMin <= 3 ? 'var(--danger)' : diffMin <= 8 ? 'var(--warn)' : 'var(--text)';
-
-  bar.classList.add('visible');
-
-  // Ajustar posição do FAB para não sobrepor
-  document.getElementById('fab-geo').style.bottom = 'calc(52vh + 76px)';
+function interpolarPos(rota, prog) {
+  const n = rota.length - 1;
+  const idx = Math.min(Math.floor(prog * n), n - 1);
+  const frac = (prog * n) - idx;
+  const a = rota[idx], b = rota[idx + 1] || rota[idx];
+  return [a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac];
 }
 
-function fecharBusBar() {
-  document.getElementById('bus-bar').classList.remove('visible');
-  document.getElementById('fab-geo').style.bottom = 'calc(52vh + 16px)';
-  onibusSelecionado = null;
+async function abrirModoFoco(est, pontoId, pontoNome, pontoLat, pontoLng) {
+  focoEstimativa = est;
+  focoPontoId  = pontoId;
+  focoPontoLat = pontoLat;
+  focoPontoLng = pontoLng;
+
+  const nomeLinha = NOMES_LINHA[est.linhaId] || 'L' + est.linhaId;
+  document.getElementById('modo-foco').classList.add('active');
+  document.getElementById('foco-linha').textContent = 'Linha ' + nomeLinha;
+  document.getElementById('foco-titulo').textContent = 'Veículo ' + est.veiculo;
+  document.getElementById('foco-update').textContent = 'Iniciando...';
+
+  // Inicializar mapa foco
+  if (!FOCO_MAP) {
+    FOCO_MAP = L.map('foco-map', { zoomControl: true }).setView([pontoLat, pontoLng], 13);
+    L.tileLayer('https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}', {
+      attribution: '© Google Maps', maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
+    }).addTo(FOCO_MAP);
+  }
+
+  // Marcador do ponto
+  if (focoPontoMark) focoPontoMark.remove();
+  focoPontoMark = L.marker([pontoLat, pontoLng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:38px;height:38px;background:#fff;border:3px solid #1a6ef5;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:16px">🚏</span></div>`,
+      iconSize:[38,38], iconAnchor:[12,38]
+    })
+  }).addTo(FOCO_MAP);
+  focoPontoMark.bindPopup(`<b style="font-family:var(--sans)">${pontoNome}</b>`);
+
+  await _atualizarFoco();
+
+  if (focoTimer) clearInterval(focoTimer);
+  focoTimer = setInterval(_atualizarFoco, 10000);
 }
 
-// Chamar mostrarBusBar ao renderizar estimativas (primeira da lista)
-const _renderEstimativasOrig = renderEstimativas;
+async function _atualizarFoco() {
+  try {
+    const res = await fetch('/api/estimativas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pontoDeOrigemId: focoPontoId, linhaId: focoEstimativa.linhaId }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const agora = data.horarioDoServidor || Date.now();
+
+    // Pegar estimativa mais próxima (mesma viagem ou próxima)
+    const lista = (data.estimativas || [])
+      .filter(e => e.horarioNaOrigem > agora)
+      .sort((a,b) => a.horarioNaOrigem - b.horarioNaOrigem);
+
+    const est = lista.find(e => e.veiculoId === focoEstimativa.veiculoId) || lista[0];
+    if (!est) return;
+
+    focoEstimativa = est;
+    const nomeLinha = NOMES_LINHA[est.linhaId] || 'L' + est.linhaId;
+    const diffSec = Math.round((est.horarioNaOrigem - agora) / 1000);
+    const diffMin = Math.max(0, Math.floor(diffSec / 60));
+    const horario = new Date(est.horarioNaOrigem).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const secsAtras = Math.round((agora - est.horarioDaTransmissao) / 1000);
+
+    // Countdown
+    const cdEl = document.getElementById('foco-countdown');
+    cdEl.className = 'foco-countdown ' + (diffMin <= 2 ? 'chegando' : diffMin <= 8 ? 'iminente' : 'normal');
+    document.getElementById('foco-num').innerHTML = diffMin + '<sub>min</sub>';
+    document.getElementById('foco-label').textContent = diffMin <= 2 ? '🚨 Chegando agora!' : diffMin <= 8 ? '⚡ Prepare-se!' : '⏱ Estimativa de chegada';
+    document.getElementById('foco-sub').textContent = `Linha ${nomeLinha} · chegada às ${horario}`;
+    document.getElementById('foco-titulo').textContent = 'Veículo ' + est.veiculo;
+
+    const extras = [];
+    if (est.accessibility)  extras.push('♿');
+    if (est.arCondicionado) extras.push('❄️ A/C');
+    if (est.wifi)           extras.push('📶 Wi-Fi');
+    document.getElementById('foco-extras').innerHTML = extras.map(e => `<span class="foco-extra-tag">${e}</span>`).join('');
+
+    const pct = Math.round((est.busStopPosition / est.busStopFinalPosition) * 100);
+    document.getElementById('foco-veiculo-info').textContent = `Veículo ${est.veiculo} · ${pct}% do percurso concluído`;
+
+    // Update GPS
+    const upEl = document.getElementById('foco-update');
+    upEl.innerHTML = `GPS<br>${secsAtras}s atrás`;
+    upEl.className = 'foco-update' + (secsAtras < 60 ? ' live' : '');
+
+    // Trajeto
+    _desenharTrajeto(est);
+
+  } catch(e) {
+    document.getElementById('foco-update').textContent = 'Erro';
+    console.warn('Foco error:', e.message);
+  }
+}
+
+function _desenharTrajeto(est) {
+  // Remover polylines anteriores
+  focoPolylines.forEach(p => p.remove());
+  focoPolylines = [];
+
+  const rota = focoPontoId === 116 ? ROTA_523 : ROTA_523_VOLTA;
+  const progresso = Math.min(est.busStopPosition / (est.busStopFinalPosition || 35000), 0.99);
+  const splitIdx = Math.max(1, Math.floor(progresso * (rota.length - 1)));
+
+  // Trecho percorrido (cinza claro)
+  const percorrida = L.polyline(rota.slice(0, splitIdx + 1), {
+    color: '#b0bcd4', weight: 5, opacity: .7
+  }).addTo(FOCO_MAP);
+
+  // Trecho restante (azul)
+  const restante = L.polyline(rota.slice(splitIdx), {
+    color: '#1a6ef5', weight: 5, opacity: .95
+  }).addTo(FOCO_MAP);
+
+  focoPolylines = [percorrida, restante];
+
+  // Posição interpolada do ônibus
+  const [busLat, busLng] = interpolarPos(rota, progresso);
+
+  if (focoOnibusMark) focoOnibusMark.remove();
+  focoOnibusMark = L.marker([busLat, busLng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="background:#1a6ef5;border:3px solid #fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(26,110,245,.25),0 3px 12px rgba(0,0,0,.3);font-size:17px">🚌</div>`,
+      iconSize:[34,34], iconAnchor:[17,17]
+    }),
+    zIndexOffset: 1000
+  }).addTo(FOCO_MAP);
+
+  focoOnibusMark.bindPopup(`
+    <div style="font-family:var(--sans);padding:4px;min-width:160px">
+      <div style="font-weight:700;font-size:13px">Linha ${NOMES_LINHA[est.linhaId]||est.linhaId} · ${est.veiculo}</div>
+      <div style="font-size:11px;color:#666;margin-top:3px;font-family:var(--mono)">${Math.round((est.busStopPosition/est.busStopFinalPosition)*100)}% do percurso</div>
+    </div>
+  `);
+
+  // Ajustar bounds
+  const bounds = L.latLngBounds([[focoPontoLat, focoPontoLng],[busLat, busLng]]);
+  rota.forEach(p => bounds.extend(p));
+  FOCO_MAP.fitBounds(bounds, { padding:[50,50], maxZoom:14 });
+}
+
+function sairModoFoco() {
+  if (focoTimer) { clearInterval(focoTimer); focoTimer = null; }
+  document.getElementById('modo-foco').classList.remove('active');
+  if (FOCO_MAP) { FOCO_MAP.remove(); FOCO_MAP = null; }
+  focoOnibusMark = null; focoPontoMark = null; focoPolylines = [];
+}
+
 window.addEventListener('load', initMap);
 </script>
 </body>
