@@ -299,7 +299,9 @@ header {
 // ═══════════════════════════════════════════════════════
 // CONFIGURAÇÃO DA API
 // ═══════════════════════════════════════════════════════
-const API_BASE  = 'http://localhost:3001/geocontrol'; // proxy local
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:3001'   // desenvolvimento local
+  : '';                        // Vercel: usa /api/estimativas direto
 const PONTO_ID  = 415;   // ID interno do ponto 440156
 const PONTO_COD = '440156';
 
@@ -533,7 +535,7 @@ async function carregarEstimativas(ponto) {
   document.getElementById('refresh-lbl').textContent = 'Atualizando...';
 
   try {
-    const res = await fetch(`${API_BASE}/estimativas`, {
+    const res = await fetch(`${API_BASE}/api/estimativas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
