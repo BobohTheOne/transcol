@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRANSCOL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --surface2: #e8ebf2;
+  --border:   #d4d9e8;
+  --accent:   #1a6ef5;
+  --green:    #00c48c;
+  --warn:     #f5820a;
+  --danger:   #e53935;
+  --text:     #111827;
+  --muted:    #6b7a99;
+  --mono:     'DM Mono', monospace;
+  --sans:     'Plus Jakarta Sans', sans-serif;
+  --shadow:   0 2px 12px rgba(0,0,0,.10);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.14);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; font-family:var(--sans); background:var(--bg); color:var(--text); overflow:hidden; }
+#app { display:flex; flex-direction:column; height:100vh; }
+
+/* ── Header ── */
+header {
+  z-index:1000; background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 20px; height:56px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0; box-shadow:var(--shadow);
+}
+.logo { font-size:18px; font-weight:800; letter-spacing:-.5px; display:flex; align-items:center; gap:8px; }
+.logo-icon { width:30px; height:30px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+.clock { font-family:var(--mono); font-size:12px; color:var(--muted); background:var(--surface2); padding:4px 10px; border-radius:8px; border:1px solid var(--border); }
+
+/* ── Mapa ── */
+#map { flex:1; z-index:1; min-height:0; }
+
+/* ── FAB ── */
+#fab-geo {
+  position:fixed; right:16px;
+  width:46px; height:46px;
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:14px; box-shadow:var(--shadow-lg);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; cursor:pointer; z-index:400; transition:background .15s;
+  bottom:calc(52vh + 16px);
+}
+#fab-geo:hover { background:var(--surface2); }
+
+/* ── Bottom sheet ── */
+#sheet {
+  z-index:500; background:var(--surface);
+  border-top:1px solid var(--border);
+  border-radius:24px 24px 0 0;
+  box-shadow:0 -4px 32px rgba(0,0,0,.12);
+  flex-shrink:0; max-height:52vh; overflow:hidden;
+  display:flex; flex-direction:column;
+  transition:max-height .35s cubic-bezier(.4,0,.2,1);
+}
+#sheet.expanded { max-height:80vh; }
+.sheet-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:12px auto 0; flex-shrink:0; cursor:pointer; }
+.sheet-scroll { overflow-y:auto; flex:1; padding-bottom:24px; }
+
+/* ── Views ── */
+.view { display:none; }
+.view.active { display:block; }
+
+/* ── Lista ── */
+.sheet-top { padding:12px 20px 8px; display:flex; align-items:center; justify-content:space-between; }
+.sheet-title { font-size:16px; font-weight:700; }
+.sheet-sub { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+
+.geo-btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:calc(100% - 32px); margin:4px 16px 14px;
+  padding:12px 20px; background:var(--accent); color:#fff;
+  border:none; border-radius:12px;
+  font-family:var(--sans); font-size:14px; font-weight:600;
+  cursor:pointer; transition:opacity .15s;
+}
+.geo-btn:hover { opacity:.9; }
+.geo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ponto-card {
+  display:flex; align-items:center; gap:14px;
+  padding:13px 20px; cursor:pointer;
+  border-bottom:1px solid var(--surface2); transition:background .1s;
+}
+.ponto-card:hover { background:var(--surface2); }
+.ponto-card:last-child { border-bottom:none; }
+
+.ponto-icon {
+  width:44px; height:44px; border-radius:12px;
+  background:var(--surface2); border:1.5px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.ponto-icon.near { background:rgba(26,110,245,.1); border-color:rgba(26,110,245,.3); }
+
+.ponto-info { flex:1; min-width:0; }
+.ponto-name { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ponto-meta { font-size:11px; color:var(--muted); margin-top:2px; font-family:var(--mono); }
+
+.ponto-right { text-align:right; flex-shrink:0; }
+.dist-badge {
+  font-family:var(--mono); font-size:11px;
+  padding:3px 8px; border-radius:20px;
+  background:var(--surface2); color:var(--muted); border:1px solid var(--border);
+  white-space:nowrap;
+}
+.dist-badge.close { background:rgba(0,196,140,.12); color:#009e70; border-color:rgba(0,196,140,.3); }
+.chevron { color:var(--muted); font-size:16px; margin-top:4px; }
+
+/* ── Detalhe ── */
+.det-header { display:flex; align-items:center; gap:12px; padding:12px 20px 0; }
+.back-btn {
+  width:36px; height:36px; border-radius:10px;
+  background:var(--surface2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:18px; flex-shrink:0; transition:background .12s;
+}
+.back-btn:hover { background:var(--border); }
+.det-title { font-size:16px; font-weight:700; }
+.det-sub { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+
+/* ── Refresh btn ── */
+.refresh-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 20px 0;
+}
+.refresh-lbl { font-size:11px; color:var(--muted); font-family:var(--mono); }
+.refresh-btn {
+  font-family:var(--mono); font-size:11px;
+  padding:4px 10px; border-radius:6px;
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--muted); cursor:pointer; transition:all .15s;
+  display:flex; align-items:center; gap:4px;
+}
+.refresh-btn:hover { color:var(--accent); border-color:var(--accent); }
+.refresh-btn.spinning span { display:inline-block; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Estimativas ── */
+.est-section { padding:14px 20px 0; }
+.est-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+
+/* Card da próxima chegada (hero) */
+.est-hero {
+  border-radius:16px; padding:18px 20px;
+  display:flex; align-items:center; gap:16px;
+  margin-bottom:12px; color:#fff;
+}
+.est-hero.chegando  { background:linear-gradient(135deg,#e53935,#c62828); }
+.est-hero.iminente  { background:linear-gradient(135deg,#f5820a,#d96200); }
+.est-hero.normal    { background:linear-gradient(135deg,#1a6ef5,#0d4fd4); }
+.est-hero.sem-dados { background:linear-gradient(135deg,#6b7a99,#4a5568); }
+
+.hero-min { font-family:var(--mono); font-size:44px; font-weight:500; letter-spacing:-2px; line-height:1; min-width:90px; }
+.hero-min sub { font-size:18px; opacity:.8; letter-spacing:0; }
+.hero-info {}
+.hero-linha { font-size:15px; font-weight:700; }
+.hero-veiculo { font-size:12px; opacity:.8; margin-top:2px; font-family:var(--mono); }
+.hero-extras { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.extra-tag {
+  font-size:10px; padding:2px 7px; border-radius:4px;
+  background:rgba(255,255,255,.2); color:#fff;
+  border:1px solid rgba(255,255,255,.3);
+  font-family:var(--mono);
+}
+
+/* Lista de próximas */
+.est-row {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 0; border-bottom:1px solid var(--surface2);
+}
+.est-row:last-child { border-bottom:none; }
+
+.est-linha-badge {
+  font-family:var(--mono); font-size:12px; font-weight:500;
+  padding:4px 8px; border-radius:6px;
+  background:rgba(26,110,245,.1); color:var(--accent);
+  border:1px solid rgba(26,110,245,.2);
+  min-width:50px; text-align:center; flex-shrink:0;
+}
+.est-info { flex:1; min-width:0; }
+.est-veiculo { font-size:12px; color:var(--muted); font-family:var(--mono); }
+.est-icons { display:flex; gap:4px; margin-top:2px; }
+.est-icon { font-size:11px; }
+
+.est-tempo {
+  font-family:var(--mono); font-size:14px; font-weight:600;
+  color:var(--text); flex-shrink:0; text-align:right;
+}
+.est-tempo.urgente { color:var(--danger); }
+.est-tempo.breve   { color:var(--warn); }
+
+/* ── Loading skeleton ── */
+.skeleton {
+  background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.2s infinite;
+  border-radius:8px;
+}
+@keyframes shimmer { to { background-position:-200% 0; } }
+
+/* ── Erro ── */
+.erro-box {
+  margin:12px 20px; padding:16px; background:#fff5f5;
+  border:1px solid #fecdd3; border-radius:12px;
+  font-size:13px; color:#c62828; line-height:1.6;
+}
+.erro-box strong { display:block; margin-bottom:4px; }
+
+/* ── Leaflet ── */
+.leaflet-popup-content-wrapper { border-radius:14px !important; box-shadow:var(--shadow-lg) !important; font-family:var(--sans) !important; padding:0 !important; overflow:hidden; }
+.leaflet-popup-content { margin:0 !important; }
+.pop-inner { padding:14px 16px; }
+.pop-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+.pop-cod { font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:10px; }
+.pop-btn { width:100%; padding:9px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-family:var(--sans); font-size:13px; font-weight:600; cursor:pointer; }
+.pop-btn:hover { opacity:.9; }
+
+/* ── Loading tela ── */
+#loading {
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+  z-index:9999; transition:opacity .4s;
+}
+#loading.hide { opacity:0; pointer-events:none; }
+.spinner { width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+.load-txt { font-size:14px; color:var(--muted); font-weight:500; }
+
+@media(max-width:480px) { .hero-min { font-size:36px; } }
+</style>
+</head>
+<body>
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="load-txt">Carregando mapa...</div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo"><div class="logo-icon">🚌</div>TRANSCOL</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+
+  <div id="map"></div>
+  <div id="fab-geo" onclick="centerUser()">📍</div>
+
+  <div id="sheet">
+    <div class="sheet-handle" onclick="toggleSheet()"></div>
+    <div class="sheet-scroll">
+
+      <!-- View: lista -->
+      <div class="view active" id="view-lista">
+        <div class="sheet-top">
+          <div>
+            <div class="sheet-title" id="lista-title">Pontos de ônibus</div>
+            <div class="sheet-sub" id="lista-sub">Ative sua localização para ver pontos próximos</div>
+          </div>
+        </div>
+        <button class="geo-btn" id="geo-btn" onclick="buscarGeo()">📡 Usar minha localização</button>
+        <div id="pontos-list"></div>
+      </div>
+
+      <!-- View: detalhe -->
+      <div class="view" id="view-detalhe">
+        <div class="det-header">
+          <div class="back-btn" onclick="voltarLista()">←</div>
+          <div>
+            <div class="det-title" id="det-titulo">–</div>
+            <div class="det-sub" id="det-sub">–</div>
+          </div>
+        </div>
+        <div class="refresh-row">
+          <span class="refresh-lbl" id="refresh-lbl">Atualizando...</span>
+          <button class="refresh-btn" id="refresh-btn" onclick="recarregarEstimativas()">
+            <span>↻</span> Atualizar
+          </button>
+        </div>
+        <div id="det-content" style="padding-bottom:8px;"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIGURAÇÃO DA API
+// ═══════════════════════════════════════════════════════
+const API_BASE  = 'http://localhost:3001/geocontrol'; // proxy local
+const PONTO_ID  = 415;   // ID interno do ponto 440156
+const PONTO_COD = '440156';
+
+// Mapa de linhaId → nome da linha (confirmado via listarItinerarios)
+const NOMES_LINHA = {
+  564: '523',   // ✅ confirmado via listarItinerarios (pontoDeOrigemId:415)
+  453: '???',   // capture listarItinerarios com outros pontos para confirmar
+  454: '???',
+  403: '???',
+  470: '???',
+  562: '???',
+};
+
+// Pontos conhecidos na rota (fallback estático)
+const PONTOS_ROTA = [
+  {
+    id:'p1',
+    nome:'Av. Talma Rodrigues Ribeiro',
+    lat: -20.18110481247275,
+    lng: -40.23302581789987,
+    pontoId: 415,
+    cod: '440156',
+    principal: false,
+    municipio: 'Serra',
+    label: 'Trabalho / Ponto de chegada'
+  },
+  {
+    id:'p2',
+    nome:'Av. José Moreira Martins Rato',
+    lat: -20.243178235455098,
+    lng: -40.26885379229531,
+    pontoId: 116,
+    cod: '440098',
+    principal: true,
+    municipio: 'Serra',
+    label: 'Minha casa / Ponto de saída'
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════════
+let MAP, userMarker, userPos = null;
+let pontoAtivo = null;
+let autoRefreshTimer = null;
+
+// ═══════════════════════════════════════════════════════
+// RELÓGIO
+// ═══════════════════════════════════════════════════════
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('pt-BR',{hour12:false});
+}, 1000);
+document.getElementById('clock').textContent =
+  new Date().toLocaleTimeString('pt-BR',{hour12:false});
+
+// ═══════════════════════════════════════════════════════
+// MAPA
+// ═══════════════════════════════════════════════════════
+function initMap() {
+  MAP = L.map('map',{zoomControl:false}).setView([-20.212,-40.251],13);
+
+  // Tile layer: Google Maps (sem restrição de referer)
+  L.tileLayer('https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}',{
+    attribution:'© Google Maps',
+    maxZoom:20,
+    subdomains:['mt0','mt1','mt2','mt3']
+  }).addTo(MAP);
+
+  L.control.zoom({position:'topright'}).addTo(MAP);
+
+  PONTOS_ROTA.forEach(plotarPonto);
+
+  document.getElementById('loading').classList.add('hide');
+}
+
+function plotarPonto(p) {
+  const cor = p.principal ? '#1a6ef5' : '#6b7a99';
+  const icon = L.divIcon({
+    className:'',
+    html:`<div style="width:36px;height:36px;background:#fff;border:3px solid ${cor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 12px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center">
+      <span style="transform:rotate(45deg);font-size:14px">🚏</span>
+    </div>`,
+    iconSize:[36,36], iconAnchor:[12,36], popupAnchor:[6,-38]
+  });
+
+  const m = L.marker([p.lat,p.lng],{icon}).addTo(MAP);
+  m.bindPopup(`<div class="pop-inner">
+    <div class="pop-title">${p.nome}</div>
+    <div class="pop-cod">Cód. ${p.cod}${p.label ? ' · ' + p.label : ''}</div>
+    <button class="pop-btn" onclick="abrirPonto('${p.id}')">Ver previsão ao vivo →</button>
+  </div>`,{maxWidth:240});
+  p._marker = m;
+
+  // Ponto da casa abre popup direto
+  if (p.principal) {
+    setTimeout(() => m.openPopup(), 900);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GEOLOCALIZAÇÃO
+// ═══════════════════════════════════════════════════════
+function buscarGeo() {
+  const btn = document.getElementById('geo-btn');
+  if (!navigator.geolocation) { usarPos(-20.243178235455098,-40.26885379229531,true); return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ Obtendo localização...';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      btn.disabled = false;
+      btn.textContent = '📡 Atualizar localização';
+      // coords.latitude = lat (N/S), coords.longitude = lng (E/O)
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      // Validar se estão na região de Serra/ES (lat ~-20, lng ~-40)
+      const latOk = lat > -21 && lat < -19;
+      const lngOk = lng > -41 && lng < -39;
+      if (latOk && lngOk) {
+        usarPos(lat, lng, false);
+      } else if (!latOk && !lngOk) {
+        // Possivelmente invertido — tentar trocar
+        usarPos(lng, lat, false);
+      } else {
+        usarPos(lat, lng, false);
+      }
+    },
+    () => {
+      btn.disabled = false;
+      btn.textContent = '📡 Usar minha localização';
+      usarPos(-20.243178235455098,-40.26885379229531, true);
+    }
+  );
+}
+
+function geodist(la1,lo1,la2,lo2) {
+  const R=6371000, dLa=(la2-la1)*Math.PI/180, dLo=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+function usarPos(lat,lng,demo) {
+  userPos = {lat,lng};
+  if (userMarker) userMarker.remove();
+  userMarker = L.marker([lat,lng],{icon:L.divIcon({
+    className:'',
+    html:`<div style="width:18px;height:18px;background:#1a6ef5;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(26,110,245,.25),0 2px 8px rgba(0,0,0,.2)"></div>`,
+    iconSize:[18,18], iconAnchor:[9,9]
+  })}).addTo(MAP);
+
+  MAP.flyTo([lat,lng],15,{duration:1.2});
+
+  const ordenados = PONTOS_ROTA
+    .map(p=>({...p, dist:geodist(lat,lng,p.lat,p.lng)}))
+    .sort((a,b)=>a.dist-b.dist);
+
+  document.getElementById('lista-title').textContent = 'Pontos próximos';
+  document.getElementById('lista-sub').textContent = demo
+    ? 'Modo demo · posição simulada'
+    : `${ordenados.length} ponto(s) encontrado(s)`;
+
+  renderLista(ordenados);
+  expandSheet();
+}
+
+function centerUser() {
+  if (userPos) MAP.flyTo([userPos.lat,userPos.lng],15,{duration:1});
+  else buscarGeo();
+}
+
+// ═══════════════════════════════════════════════════════
+// LISTA DE PONTOS
+// ═══════════════════════════════════════════════════════
+function renderLista(pontos) {
+  const c = document.getElementById('pontos-list');
+  c.innerHTML = '';
+  pontos.forEach(p => {
+    const close = p.dist < 500;
+    const dtxt  = p.dist >= 1000 ? (p.dist/1000).toFixed(1)+' km' : p.dist+'m';
+    const el = document.createElement('div');
+    el.className = 'ponto-card';
+    el.innerHTML = `
+      <div class="ponto-icon ${close?'near':''}">🚏</div>
+      <div class="ponto-info">
+        <div class="ponto-name">${p.nome}</div>
+        <div class="ponto-meta">Cód. ${p.cod}${p.pontoId?' · ID '+p.pontoId:''}</div>
+      </div>
+      <div class="ponto-right">
+        <div class="dist-badge ${close?'close':''}">${dtxt}</div>
+        <div class="chevron">›</div>
+      </div>`;
+    el.onclick = () => abrirPonto(p.id);
+    c.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// DETALHE DO PONTO — ESTIMATIVAS REAIS
+// ═══════════════════════════════════════════════════════
+function abrirPonto(id) {
+  MAP.closePopup();
+  const p = PONTOS_ROTA.find(x=>x.id===id);
+  if (!p) return;
+  pontoAtivo = p;
+
+  document.getElementById('det-titulo').textContent = p.nome;
+  document.getElementById('det-sub').textContent = `Cód. ${p.cod}${p.pontoId?' · ID interno '+p.pontoId:''}`;
+
+  MAP.flyTo([p.lat,p.lng],16,{duration:.9});
+
+  document.getElementById('view-lista').classList.remove('active');
+  document.getElementById('view-detalhe').classList.add('active');
+  expandSheet();
+
+  // Limpar timer anterior
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+
+  carregarEstimativas(p);
+
+  // Auto-refresh a cada 30s
+  autoRefreshTimer = setInterval(() => carregarEstimativas(p), 30000);
+}
+
+async function carregarEstimativas(ponto) {
+  if (!ponto.pontoId) {
+    renderEstimativasEstaticas(ponto);
+    return;
+  }
+
+  mostrarSkeleton();
+  document.getElementById('refresh-lbl').textContent = 'Atualizando...';
+
+  try {
+    const res = await fetch(`${API_BASE}/estimativas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderEstimativas(data, ponto);
+    const hora = new Date().toLocaleTimeString('pt-BR',{hour12:false});
+    document.getElementById('refresh-lbl').textContent = `Atualizado às ${hora}`;
+
+  } catch(e) {
+    renderErroProxy(ponto, e.message);
+    document.getElementById('refresh-lbl').textContent = 'Erro ao atualizar';
+  }
+}
+
+function recarregarEstimativas() {
+  if (!pontoAtivo) return;
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  setTimeout(() => btn.classList.remove('spinning'), 800);
+  carregarEstimativas(pontoAtivo);
+}
+
+function mostrarSkeleton() {
+  document.getElementById('det-content').innerHTML = `
+    <div class="est-section">
+      <div class="skeleton" style="height:96px;margin-bottom:12px;border-radius:16px;"></div>
+      <div class="est-label">Próximas chegadas</div>
+      ${[1,2,3,4].map(()=>`
+        <div class="est-row">
+          <div class="skeleton" style="width:50px;height:28px;border-radius:6px;flex-shrink:0;"></div>
+          <div style="flex:1"><div class="skeleton" style="height:14px;width:60%;margin-bottom:6px;"></div>
+          <div class="skeleton" style="height:12px;width:40%;"></div></div>
+          <div class="skeleton" style="width:50px;height:18px;border-radius:6px;"></div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderEstimativas(data, ponto) {
+  const agora   = data.horarioDoServidor || Date.now();
+  const LINHAS_FILTRO = [564]; // somente linha 523
+  const lista   = (data.estimativas || [])
+    .filter(e => e.horarioNaOrigem > agora && LINHAS_FILTRO.includes(e.linhaId))
+    .sort((a,b) => a.horarioNaOrigem - b.horarioNaOrigem)
+    .slice(0, 10);
+
+  if (!lista.length) {
+    document.getElementById('det-content').innerHTML = `
+      <div class="est-section">
+        <div style="padding:20px 0;color:var(--muted);font-size:13px;">
+          Nenhuma estimativa disponível no momento.
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Hero: próxima chegada
+  const prox     = lista[0];
+  const diffSec  = Math.round((prox.horarioNaOrigem - agora) / 1000);
+  const diffMin  = Math.max(0, Math.floor(diffSec / 60));
+  const nomeLinha = NOMES_LINHA[prox.linhaId] || 'L'+prox.linhaId;
+  const heroClass = diffMin <= 2 ? 'chegando' : diffMin <= 8 ? 'iminente' : 'normal';
+  const heroMsg   = diffMin <= 2 ? '🚨 Chegando agora!' : diffMin <= 8 ? '⚡ Prepare-se!' : '⏱ Tempo estimado';
+
+  const extras = [];
+  if (prox.accessibility)  extras.push('♿ Acessível');
+  if (prox.arCondicionado) extras.push('❄️ A/C');
+  if (prox.wifi)           extras.push('📶 Wi-Fi');
+
+  const heroHtml = `
+    <div class="est-hero ${heroClass}">
+      <div class="hero-min">${diffMin}<sub>min</sub></div>
+      <div class="hero-info">
+        <div class="hero-linha">${heroMsg}</div>
+        <div class="hero-veiculo">Linha ${nomeLinha} · Veículo ${prox.veiculo}</div>
+        ${extras.length ? `<div class="hero-extras">${extras.map(e=>`<span class="extra-tag">${e}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+
+  // Lista das próximas
+  const rows = lista.slice(1).map(e => {
+    const dS   = Math.round((e.horarioNaOrigem - agora) / 1000);
+    const dM   = Math.max(0, Math.floor(dS / 60));
+    const nome = NOMES_LINHA[e.linhaId] || 'L'+e.linhaId;
+    const cls  = dM <= 2 ? 'urgente' : dM <= 8 ? 'breve' : '';
+    const icons = [];
+    if (e.accessibility)  icons.push('<span class="est-icon" title="Acessível">♿</span>');
+    if (e.arCondicionado) icons.push('<span class="est-icon" title="Ar-condicionado">❄️</span>');
+    if (e.wifi)           icons.push('<span class="est-icon" title="Wi-Fi">📶</span>');
+    return `
+      <div class="est-row">
+        <div class="est-linha-badge">${nome}</div>
+        <div class="est-info">
+          <div class="est-veiculo">Veículo ${e.veiculo}</div>
+          ${icons.length ? `<div class="est-icons">${icons.join('')}</div>` : ''}
+        </div>
+        <div class="est-tempo ${cls}">${dM} min</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('det-content').innerHTML = `
+    <div class="est-section">
+      <div class="est-label">Próxima chegada</div>
+      ${heroHtml}
+      ${lista.length > 1 ? `<div class="est-label" style="margin-top:14px;">A seguir</div>${rows}` : ''}
+    </div>`;
+}
+
+function renderErroProxy(ponto, msg) {
+  document.getElementById('det-content').innerHTML = `
+    <div class="erro-box">
+      <strong>⚠️ Proxy não encontrado</strong>
+      O app precisa do proxy rodando em <code>localhost:3001</code> para buscar dados em tempo real da API Geocontrol.<br><br>
+      Adicione ao seu <strong>server.js</strong>:
+      <pre style="margin-top:8px;background:#fff;padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;border:1px solid #fecdd3">
+app.post('/geocontrol/estimativas', async (req, res) => {
+  const r = await axios.post(
+    'https://gvbus-previsao.geocontrol.com.br' +
+    '/pontual-previsao/svc/estimativas/obterEstimativasPorOrigem',
+    req.body,
+    { headers: { 'Content-Type': 'application/json',
+      'Origin': 'https://gvbus-previsao.geocontrol.com.br' } }
+  )
+  res.json(r.data)
+})</pre>
+      <small style="color:#999">Erro: ${msg}</small>
+    </div>
+    <div class="est-section">
+      <div class="est-label">Dados do último snapshot (09:21)</div>
+      ${renderSnapshotEstatico()}
+    </div>`;
+}
+
+function renderSnapshotEstatico() {
+  // Dados reais capturados às 09:21 — horarioDoServidor: 1777033662874
+  const snapshot = [
+    {linhaId:564, veiculo:'24247', diffMin: 9, accessibility:true,  arCondicionado:true,  wifi:true},
+    {linhaId:564, veiculo:'22927', diffMin:18, accessibility:true,  arCondicionado:false, wifi:false},
+  ];
+
+  const prox = snapshot[0];
+  const nomeLinha = NOMES_LINHA[prox.linhaId] || 'L'+prox.linhaId;
+  const heroClass = prox.diffMin <= 2 ? 'chegando' : prox.diffMin <= 8 ? 'iminente' : 'normal';
+
+  const extras = [];
+  if (prox.accessibility)  extras.push('♿');
+  if (prox.arCondicionado) extras.push('❄️');
+  if (prox.wifi)           extras.push('📶');
+
+  const heroHtml = `
+    <div class="est-hero ${heroClass}" style="opacity:.7">
+      <div class="hero-min">${prox.diffMin}<sub>min</sub></div>
+      <div class="hero-info">
+        <div class="hero-linha">Snapshot estático</div>
+        <div class="hero-veiculo">Linha ${nomeLinha} · Veículo ${prox.veiculo}</div>
+        ${extras.length ? `<div class="hero-extras">${extras.map(e=>`<span class="extra-tag">${e}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+
+  const rows = snapshot.slice(1).map(e => {
+    const nome = NOMES_LINHA[e.linhaId] || 'L'+e.linhaId;
+    const cls  = e.diffMin <= 2 ? 'urgente' : e.diffMin <= 8 ? 'breve' : '';
+    return `<div class="est-row">
+      <div class="est-linha-badge">${nome}</div>
+      <div class="est-info"><div class="est-veiculo">Veículo ${e.veiculo}</div></div>
+      <div class="est-tempo ${cls}">${e.diffMin} min</div>
+    </div>`;
+  }).join('');
+
+  return heroHtml + rows;
+}
+
+function renderEstimativasEstaticas(ponto) {
+  document.getElementById('det-content').innerHTML = `
+    <div class="est-section">
+      <div class="est-label">Ponto sem ID interno mapeado</div>
+      <div style="font-size:13px;color:var(--muted);padding:8px 0;">
+        Este ponto ainda não tem ID interno mapeado. Busque pelo código no site
+        <strong>gvbus-previsao.geocontrol.com.br</strong> para obter o pontoDeOrigemId.
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// NAVEGAÇÃO SHEET
+// ═══════════════════════════════════════════════════════
+function voltarLista() {
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+  document.getElementById('view-detalhe').classList.remove('active');
+  document.getElementById('view-lista').classList.add('active');
+  pontoAtivo = null;
+  if (userPos) MAP.flyTo([userPos.lat,userPos.lng],15,{duration:.8});
+}
+
+function toggleSheet() { document.getElementById('sheet').classList.toggle('expanded'); }
+function expandSheet()  { document.getElementById('sheet').classList.add('expanded'); }
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+window.abrirPonto = abrirPonto;
+window.addEventListener('load', initMap);
+</script>
+</body>
+</html>

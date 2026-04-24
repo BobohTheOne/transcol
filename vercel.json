@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/geocontrol/estimativas", "destination": "/api/estimativas" }
+  ]
+}
