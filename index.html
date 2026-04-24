@@ -1126,44 +1126,33 @@ let FOCO_MAP = null, focoOnibusMark = null, focoPontoMark = null;
 let focoPolylines = [], focoTimer = null, focoEstimativa = null;
 let focoPontoId = null, focoPontoLat = null, focoPontoLng = null;
 
-// Cache de rota OSRM (roteamento real pelas ruas)
+// Rota real da linha 523 capturada via OSRM (111 pontos, ruas reais)
+// Sentido IDA: T.Jacaraipe → T.Jardim América → Av.Talma → Av.José Moreira (ponto 440098)
+const ROTA_IDA  = [[-20.034109, -40.159628], [-20.03369, -40.161177], [-20.034659, -40.162817], [-20.034003, -40.165076], [-20.035428, -40.168873], [-20.036454, -40.17374], [-20.037064, -40.175843], [-20.036675, -40.18212], [-20.03801, -40.18347], [-20.043253, -40.187929], [-20.048194, -40.190563], [-20.050638, -40.191471], [-20.052457, -40.192148], [-20.054385, -40.192767], [-20.056191, -40.192415], [-20.05689, -40.192129], [-20.057087, -40.191834], [-20.057417, -40.191564], [-20.059747, -40.190219], [-20.061234, -40.188436], [-20.063296, -40.185911], [-20.064675, -40.185557], [-20.067479, -40.184648], [-20.069471, -40.183826], [-20.070142, -40.183123], [-20.070642, -40.182301], [-20.074036, -40.177214], [-20.074705, -40.176143], [-20.07551, -40.175375], [-20.078267, -40.175792], [-20.083925, -40.176561], [-20.092957, -40.176432], [-20.103024, -40.17582], [-20.105025, -40.175661], [-20.110318, -40.174077], [-20.115648, -40.176111], [-20.126555, -40.180806], [-20.133169, -40.183587], [-20.136487, -40.183815], [-20.138189, -40.183868], [-20.141312, -40.184169], [-20.142783, -40.182812], [-20.13889, -40.182302], [-20.135839, -40.183787], [-20.137541, -40.183843], [-20.14066, -40.184013], [-20.142681, -40.184521], [-20.144297, -40.184969], [-20.147022, -40.185697], [-20.149631, -40.186123], [-20.152832, -40.186239], [-20.155113, -40.18605], [-20.157075, -40.185434], [-20.159461, -40.186276], [-20.157621, -40.184654], [-20.157075, -40.185434], [-20.158206, -40.187391], [-20.157236, -40.188957], [-20.156534, -40.190982], [-20.15806, -40.192879], [-20.159092, -40.194149], [-20.158318, -40.195416], [-20.159011, -40.196311], [-20.162132, -40.196543], [-20.165713, -40.19882], [-20.167132, -40.203474], [-20.168635, -40.206526], [-20.169855, -40.211164], [-20.170357, -40.214188], [-20.173139, -40.219236], [-20.175165, -40.220852], [-20.177002, -40.225049], [-20.179429, -40.229235], [-20.182063, -40.234882], [-20.184877, -40.240959], [-20.185424, -40.243352], [-20.185802, -40.24407], [-20.189196, -40.244251], [-20.193017, -40.244384], [-20.194185, -40.246793], [-20.193795, -40.250965], [-20.194276, -40.252215], [-20.195531, -40.252549], [-20.196326, -40.254314], [-20.195778, -40.255275], [-20.196712, -40.255396], [-20.198644, -40.256184], [-20.201154, -40.257891], [-20.206072, -40.26098], [-20.207849, -40.262473], [-20.209055, -40.264072], [-20.209995, -40.265417], [-20.217732, -40.267484], [-20.224236, -40.267867], [-20.22583, -40.268278], [-20.226897, -40.269583], [-20.229546, -40.270257], [-20.231764, -40.271476], [-20.233666, -40.271655], [-20.235203, -40.271722], [-20.236906, -40.272599], [-20.238913, -40.271696], [-20.240452, -40.273069], [-20.240074, -40.273677], [-20.240599, -40.273682], [-20.240853, -40.273435], [-20.240812, -40.272765], [-20.241282, -40.271708], [-20.243523, -40.268746], [-20.24355, -40.268591], [-20.243273, -40.268719]];
+
+// Sentido VOLTA: Av.José Moreira → Av.Talma → T.Jardim América → T.Jacaraipe
+const ROTA_VOLTA = [[-20.243273, -40.268719], [-20.24355, -40.268591], [-20.243523, -40.268746], [-20.241282, -40.271708], [-20.240812, -40.272765], [-20.240853, -40.273435], [-20.240599, -40.273682], [-20.240074, -40.273677], [-20.240452, -40.273069], [-20.238913, -40.271696], [-20.236906, -40.272599], [-20.235203, -40.271722], [-20.233666, -40.271655], [-20.231764, -40.271476], [-20.229546, -40.270257], [-20.226897, -40.269583], [-20.22583, -40.268278], [-20.224236, -40.267867], [-20.217732, -40.267484], [-20.209995, -40.265417], [-20.209055, -40.264072], [-20.207849, -40.262473], [-20.206072, -40.26098], [-20.201154, -40.257891], [-20.198644, -40.256184], [-20.196712, -40.255396], [-20.195778, -40.255275], [-20.196326, -40.254314], [-20.195531, -40.252549], [-20.194276, -40.252215], [-20.193795, -40.250965], [-20.194185, -40.246793], [-20.193017, -40.244384], [-20.189196, -40.244251], [-20.185802, -40.24407], [-20.185424, -40.243352], [-20.184877, -40.240959], [-20.182063, -40.234882], [-20.179429, -40.229235], [-20.177002, -40.225049], [-20.175165, -40.220852], [-20.173139, -40.219236], [-20.170357, -40.214188], [-20.169855, -40.211164], [-20.168635, -40.206526], [-20.167132, -40.203474], [-20.165713, -40.19882], [-20.162132, -40.196543], [-20.159011, -40.196311], [-20.158318, -40.195416], [-20.159092, -40.194149], [-20.15806, -40.192879], [-20.156534, -40.190982], [-20.157236, -40.188957], [-20.158206, -40.187391], [-20.157075, -40.185434], [-20.157621, -40.184654], [-20.159461, -40.186276], [-20.157075, -40.185434], [-20.155113, -40.18605], [-20.152832, -40.186239], [-20.149631, -40.186123], [-20.147022, -40.185697], [-20.144297, -40.184969], [-20.142681, -40.184521], [-20.14066, -40.184013], [-20.137541, -40.183843], [-20.135839, -40.183787], [-20.13889, -40.182302], [-20.142783, -40.182812], [-20.141312, -40.184169], [-20.138189, -40.183868], [-20.136487, -40.183815], [-20.133169, -40.183587], [-20.126555, -40.180806], [-20.115648, -40.176111], [-20.110318, -40.174077], [-20.105025, -40.175661], [-20.103024, -40.17582], [-20.092957, -40.176432], [-20.083925, -40.176561], [-20.078267, -40.175792], [-20.07551, -40.175375], [-20.074705, -40.176143], [-20.074036, -40.177214], [-20.070642, -40.182301], [-20.070142, -40.183123], [-20.069471, -40.183826], [-20.067479, -40.184648], [-20.064675, -40.185557], [-20.063296, -40.185911], [-20.061234, -40.188436], [-20.059747, -40.190219], [-20.057417, -40.191564], [-20.057087, -40.191834], [-20.05689, -40.192129], [-20.056191, -40.192415], [-20.054385, -40.192767], [-20.052457, -40.192148], [-20.050638, -40.191471], [-20.048194, -40.190563], [-20.043253, -40.187929], [-20.03801, -40.18347], [-20.036675, -40.18212], [-20.037064, -40.175843], [-20.036454, -40.17374], [-20.035428, -40.168873], [-20.034003, -40.165076], [-20.034659, -40.162817], [-20.03369, -40.161177], [-20.034109, -40.159628]];
+
+// Mapeamento de itinerarioId → sentido (confirmado via API Geocontrol)
+// bandeira "TERMINAL JACARAIPE" = IDA (Jacaraipe → Jardim América → Vitória)
+// bandeira "TERMINAL JARDIM AMERICA" = VOLTA (Vitória → Jardim América → Jacaraipe)
+const ITINS_IDA   = new Set([4695]); // adicione outros IDs IDA conforme descobrir
+const ITINS_VOLTA = new Set([5471, 5472]); // IDs VOLTA
+
+function getSentido(itinerarioId) {
+  if (ITINS_IDA.has(itinerarioId))   return 'ida';
+  if (ITINS_VOLTA.has(itinerarioId)) return 'volta';
+  // Fallback: tentar deduzir pelo itinerarioId (IDs menores = IDA, maiores = VOLTA)
+  return itinerarioId < 5000 ? 'ida' : 'volta';
+}
+
 const _rotaCache = {};
 
-// Waypoints chave da linha 523 (lng,lat para OSRM)
-const WP_IDA   = '-40.0736,-20.0821;-40.1008,-20.1034;-40.1512,-20.1432;-40.1689,-20.1567;-40.2330,-20.1811;-40.2688,-20.2431';
-const WP_VOLTA = '-40.2688,-20.2431;-40.2330,-20.1811;-40.1689,-20.1567;-40.1512,-20.1432;-40.1008,-20.1034;-40.0736,-20.0821';
-
-// Fallback (linha reta entre pontos chave) caso OSRM falhe
-const ROTA_FB_IDA = [
-  [-20.0821,-40.0736],[-20.0978,-40.0923],[-20.1034,-40.1008],
-  [-20.1143,-40.1134],[-20.1356,-40.1456],[-20.1432,-40.1512],
-  [-20.1489,-40.1598],[-20.1567,-40.1689],[-20.1623,-40.1834],
-  [-20.1778,-40.2234],[-20.1811,-40.2330],[-20.2201,-40.2578],
-  [-20.2310,-40.2645],[-20.2431,-40.2688],
-];
-const ROTA_FB_VOLTA = [...ROTA_FB_IDA].reverse();
-
-async function buscarRota(pontoId) {
-  const key = pontoId === 116 ? 'ida' : 'volta';
+async function buscarRota(itinerarioId) {
+  const key = getSentido(itinerarioId);
   if (_rotaCache[key]) return _rotaCache[key];
-
-  const wp = pontoId === 116 ? WP_IDA : WP_VOLTA;
-  try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${wp}?overview=full&geometries=geojson`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    const data = await res.json();
-    if (data.code !== 'Ok') throw new Error(data.code);
-    // OSRM retorna [lng,lat] → converter para [lat,lng] (Leaflet)
-    const rota = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-    _rotaCache[key] = rota;
-    console.log('✅ Rota OSRM carregada:', key, rota.length, 'pontos');
-    return rota;
-  } catch(e) {
-    console.warn('⚠️ OSRM indisponível, usando fallback:', e.message);
-    const fb = pontoId === 116 ? ROTA_FB_IDA : ROTA_FB_VOLTA;
-    _rotaCache[key] = fb;
-    return fb;
-  }
+  _rotaCache[key] = key === 'ida' ? ROTA_IDA : ROTA_VOLTA;
+  return _rotaCache[key];
 }
 
 function interpolarPos(rota, prog) {
@@ -1273,7 +1262,7 @@ let _rotaDesenhadaKey = null; // controla quando reajustar zoom
 
 async function _desenharTrajeto(est) {
   // Buscar rota real via OSRM (com cache — só busca uma vez)
-  const rota = await buscarRota(focoPontoId);
+  const rota = await buscarRota(est.itinerarioId);
   const progresso = Math.min(est.busStopPosition / (est.busStopFinalPosition || 35000), 0.99);
   const splitIdx = Math.max(1, Math.floor(progresso * (rota.length - 1)));
 
@@ -1296,28 +1285,30 @@ async function _desenharTrajeto(est) {
   // Posição interpolada do ônibus
   const [busLat, busLng] = interpolarPos(rota, progresso);
 
-  // Mover marcador do ônibus sem resetar zoom
-  if (focoOnibusMark) {
+  // Mover ou criar marcador do ônibus
+  const busIcon = L.divIcon({
+    className: '',
+    html: `<div style="background:#1a6ef5;border:3px solid #fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(26,110,245,.25),0 3px 12px rgba(0,0,0,.3);font-size:17px">🚌</div>`,
+    iconSize:[34,34], iconAnchor:[17,17]
+  });
+
+  if (focoOnibusMark && FOCO_MAP.hasLayer(focoOnibusMark)) {
+    // Mover suavemente sem recriar (não reseta zoom)
     focoOnibusMark.setLatLng([busLat, busLng]);
   } else {
-    focoOnibusMark = L.marker([busLat, busLng], {
-      icon: L.divIcon({
-        className: '',
-        html: `<div style="background:#1a6ef5;border:3px solid #fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(26,110,245,.25),0 3px 12px rgba(0,0,0,.3);font-size:17px;animation:pulseOnibus 1.5s ease-in-out infinite">🚌</div>`,
-        iconSize:[34,34], iconAnchor:[17,17]
-      }),
-      zIndexOffset: 1000
-    }).addTo(FOCO_MAP);
-    focoOnibusMark.bindPopup(`
-      <div style="font-family:var(--sans);padding:4px;min-width:160px">
-        <div style="font-weight:700;font-size:13px">Linha ${NOMES_LINHA[est.linhaId]||est.linhaId} · ${est.veiculo}</div>
-        <div style="font-size:11px;color:#666;margin-top:3px;font-family:var(--mono)">${Math.round(progresso*100)}% do percurso</div>
-      </div>
-    `);
+    focoOnibusMark = L.marker([busLat, busLng], { icon: busIcon, zIndexOffset: 1000 }).addTo(FOCO_MAP);
   }
+  // Atualizar popup sempre
+  focoOnibusMark.setIcon(busIcon);
+  focoOnibusMark.bindPopup(`
+    <div style="font-family:var(--sans);padding:4px;min-width:160px">
+      <div style="font-weight:700;font-size:13px">Linha ${NOMES_LINHA[est.linhaId]||est.linhaId} · ${est.veiculo}</div>
+      <div style="font-size:11px;color:#666;margin-top:3px;font-family:var(--mono)">${Math.round(progresso*100)}% do percurso concluído</div>
+    </div>
+  `);
 
   // Ajustar zoom APENAS na primeira vez que a rota é carregada
-  const rotaKey = focoPontoId + '_' + est.itinerarioId;
+  const rotaKey = est.itinerarioId;
   if (_rotaDesenhadaKey !== rotaKey) {
     _rotaDesenhadaKey = rotaKey;
     const bounds = L.latLngBounds(rota);
