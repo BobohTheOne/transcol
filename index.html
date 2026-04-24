@@ -1007,6 +1007,9 @@ function renderEstimativas(data, ponto) {
       ${lista.length > 1 ? `<div class="est-label" style="margin-top:6px;">A seguir</div>${rows}` : ''}
     </div>`;
 
+  // Atualizar ícones de sino após recriar o HTML
+  requestAnimationFrame(atualizarIconesSino);
+
 
 }
 
@@ -1132,6 +1135,8 @@ async function ativarSino(est, pontoId, pontoNome, diffMinAtual) {
     clearInterval(sinoTimers.get(chave));
     sinoTimers.delete(chave);
     mostrarToast('🔕 Sino desativado');
+    // Atualizar visual imediatamente após desativar
+    requestAnimationFrame(atualizarIconesSino);
     return false;
   }
 
@@ -1197,6 +1202,9 @@ async function ativarSino(est, pontoId, pontoNome, diffMinAtual) {
 
   const nomeLinha = NOMES_LINHA[est.linhaId] || 'L' + est.linhaId;
   mostrarToast(`🔔 Sino ativado — Linha ${nomeLinha} · Veículo ${est.veiculo}`);
+
+  // Atualizar visual imediatamente após ativar
+  requestAnimationFrame(atualizarIconesSino);
   return true;
 }
 
@@ -1212,6 +1220,8 @@ function atualizarIconesSino() {
     btn.textContent = ativo ? '🔔' : '🔕';
     btn.title = ativo ? 'Sino ativo — clique para cancelar' : 'Ativar sino para este ônibus';
     btn.style.opacity = ativo ? '1' : '0.5';
+    btn.style.background = ativo ? 'rgba(0,196,140,.12)' : 'var(--surface2)';
+    btn.style.borderColor = ativo ? 'rgba(0,196,140,.4)' : 'var(--border)';
   });
 }
 
@@ -1249,15 +1259,18 @@ window.abrirModoFoco = abrirModoFoco;
 window._toggleSino = async function(estJson) {
   const est = JSON.parse(decodeURIComponent(estJson));
   if (!pontoAtivo) return;
-  const ativo = await ativarSino(est, pontoAtivo.pontoId, pontoAtivo.nome, 0);
+  await ativarSino(est, pontoAtivo.pontoId, pontoAtivo.nome, 0);
+  // Atualizar imediatamente e novamente após micro-task
   atualizarIconesSino();
+  requestAnimationFrame(atualizarIconesSino);
 };
 
 window._toggleSinoHero = async function(estJson) {
   const est = JSON.parse(decodeURIComponent(estJson));
   if (!pontoAtivo) return;
-  const ativo = await ativarSino(est, pontoAtivo.pontoId, pontoAtivo.nome, 0);
+  await ativarSino(est, pontoAtivo.pontoId, pontoAtivo.nome, 0);
   atualizarIconesSino();
+  requestAnimationFrame(atualizarIconesSino);
 };
 
 window._verNoMapa = function(estJson) {
