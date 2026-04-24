@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TRANSCOL</title>
+<meta name="description" content="Linha 523 — Grande Vitória ES">
+<meta name="theme-color" content="#1a6ef5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TRANSCOL">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%231a6ef5'/%3E%3Crect x='18' y='38' width='84' height='52' rx='8' fill='white'/%3E%3Crect x='26' y='46' width='16' height='12' rx='3' fill='%231a6ef5' opacity='.85'/%3E%3Crect x='48' y='46' width='16' height='12' rx='3' fill='%231a6ef5' opacity='.85'/%3E%3Crect x='70' y='46' width='16' height='12' rx='3' fill='%231a6ef5' opacity='.85'/%3E%3Ccircle cx='34' cy='93' r='9' fill='%230d3fa8'/%3E%3Ccircle cx='88' cy='93' r='9' fill='%230d3fa8'/%3E%3Crect x='100' y='56' width='7' height='18' rx='3' fill='%230d3fa8'/%3E%3Crect x='101' y='52' width='5' height='7' rx='2' fill='%23ffd166'/%3E%3Ccircle cx='60' cy='22' r='8' fill='white' opacity='.9'/%3E%3Ccircle cx='60' cy='22' r='4' fill='%231a6ef5'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -360,22 +366,114 @@ header {
 .pop-btn:hover { opacity:.9; }
 
 /* ── Loading tela ── */
+/* ── Splash screen ── */
 #loading {
-  position:fixed; inset:0; background:var(--bg);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
-  z-index:9999; transition:opacity .4s;
+  position:fixed; inset:0;
+  background: #1a6ef5;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9999;
+  transition:opacity .5s ease, transform .5s ease;
 }
-#loading.hide { opacity:0; pointer-events:none; }
-.spinner { width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
-.load-txt { font-size:14px; color:var(--muted); font-weight:500; }
+#loading.hide {
+  opacity:0;
+  pointer-events:none;
+  transform: scale(1.04);
+}
+
+/* Logo SVG animada */
+.splash-logo {
+  width: 120px; height: 120px;
+  animation: splashBounce .6s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes splashBounce {
+  0%   { transform: scale(0.5) translateY(20px); opacity:0; }
+  100% { transform: scale(1) translateY(0); opacity:1; }
+}
+
+.splash-name {
+  font-family: var(--sans);
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  margin-top: 16px;
+  animation: splashFade .4s .3s both;
+}
+.splash-sub {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: rgba(255,255,255,.65);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  animation: splashFade .4s .5s both;
+}
+.splash-dots {
+  display: flex; gap: 6px;
+  margin-top: 40px;
+  animation: splashFade .4s .7s both;
+}
+.splash-dot {
+  width: 6px; height: 6px;
+  background: rgba(255,255,255,.4);
+  border-radius: 50%;
+  animation: dotPulse 1.2s ease-in-out infinite;
+}
+.splash-dot:nth-child(2) { animation-delay: .2s; }
+.splash-dot:nth-child(3) { animation-delay: .4s; }
+
+@keyframes splashFade {
+  0%   { opacity:0; transform: translateY(8px); }
+  100% { opacity:1; transform: translateY(0); }
+}
+@keyframes dotPulse {
+  0%,100% { background: rgba(255,255,255,.3); transform: scale(1); }
+  50%      { background: rgba(255,255,255,.9); transform: scale(1.3); }
+}
 
 @media(max-width:480px) { .hero-min { font-size:36px; } }
 </style>
 </head>
 <body>
 <div id="loading">
-  <div class="spinner"></div>
-  <div class="load-txt">Carregando mapa...</div>
+  <!-- Logo SVG inline -->
+  <svg class="splash-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fundo quadrado arredondado branco com opacidade -->
+    <rect x="0" y="0" width="120" height="120" rx="26" fill="rgba(255,255,255,0.15)"/>
+    <!-- Corpo do ônibus -->
+    <rect x="18" y="38" width="84" height="52" rx="8" fill="white" opacity="0.95"/>
+    <!-- Janelas -->
+    <rect x="26" y="46" width="16" height="12" rx="3" fill="#1a6ef5" opacity="0.85"/>
+    <rect x="48" y="46" width="16" height="12" rx="3" fill="#1a6ef5" opacity="0.85"/>
+    <rect x="70" y="46" width="16" height="12" rx="3" fill="#1a6ef5" opacity="0.85"/>
+    <rect x="90" y="46" width="8"  height="12" rx="3" fill="#1a6ef5" opacity="0.5"/>
+    <!-- Faixa -->
+    <rect x="18" y="64" width="84" height="3" rx="1" fill="#1a6ef5" opacity="0.2"/>
+    <!-- Rodas -->
+    <circle cx="34"  cy="93" r="9" fill="#0d3fa8"/>
+    <circle cx="34"  cy="93" r="4" fill="white" opacity="0.3"/>
+    <circle cx="88"  cy="93" r="9" fill="#0d3fa8"/>
+    <circle cx="88"  cy="93" r="4" fill="white" opacity="0.3"/>
+    <!-- Para-choque frente -->
+    <rect x="100" y="56" width="7" height="18" rx="3" fill="#0d3fa8"/>
+    <!-- Farol -->
+    <rect x="101" y="52" width="5"  height="7"  rx="2" fill="#ffd166"/>
+    <!-- Pin localização -->
+    <circle cx="60" cy="22" r="8"  fill="white" opacity="0.9"/>
+    <circle cx="60" cy="22" r="4"  fill="#1a6ef5"/>
+    <line x1="60" y1="30" x2="60" y2="38" stroke="white" stroke-width="2" opacity="0.5" stroke-linecap="round"/>
+    <!-- Linhas de velocidade -->
+    <line x1="6"  y1="72" x2="18" y2="72" stroke="white" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
+    <line x1="8"  y1="79" x2="18" y2="79" stroke="white" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+  </svg>
+
+  <div class="splash-name">TRANSCOL</div>
+  <div class="splash-sub">Grande Vitória · ES</div>
+  <div class="splash-dots">
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+  </div>
 </div>
 
 <!-- Modo foco: ônibus selecionado -->
@@ -402,7 +500,26 @@ header {
 
 <div id="app">
   <header>
-    <div class="logo"><div class="logo-icon">🚌</div>TRANSCOL</div>
+    <div class="logo">
+      <svg width="30" height="30" viewBox="0 0 120 120" style="border-radius:8px;flex-shrink:0">
+        <rect x="0" y="0" width="120" height="120" rx="26" fill="#1a6ef5"/>
+        <rect x="18" y="38" width="84" height="52" rx="8" fill="white" opacity="0.95"/>
+        <rect x="26" y="46" width="16" height="12" rx="3" fill="#1a6ef5" opacity="0.85"/>
+        <rect x="48" y="46" width="16" height="12" rx="3" fill="#1a6ef5" opacity="0.85"/>
+        <rect x="70" y="46" width="16" height="12" rx="3" fill="#1a6ef5" opacity="0.85"/>
+        <rect x="90" y="46" width="8"  height="12" rx="3" fill="#1a6ef5" opacity="0.5"/>
+        <rect x="18" y="64" width="84" height="3" rx="1" fill="#1a6ef5" opacity="0.2"/>
+        <circle cx="34" cy="93" r="9" fill="#0d3fa8"/>
+        <circle cx="34" cy="93" r="4" fill="white" opacity="0.3"/>
+        <circle cx="88" cy="93" r="9" fill="#0d3fa8"/>
+        <circle cx="88" cy="93" r="4" fill="white" opacity="0.3"/>
+        <rect x="100" y="56" width="7" height="18" rx="3" fill="#0d3fa8"/>
+        <rect x="101" y="52" width="5" height="7"  rx="2" fill="#ffd166"/>
+        <circle cx="60" cy="22" r="8" fill="white" opacity="0.9"/>
+        <circle cx="60" cy="22" r="4" fill="#1a6ef5"/>
+      </svg>
+      TRANSCOL
+    </div>
     <div class="clock" id="clock">--:--:--</div>
   </header>
 
@@ -459,41 +576,66 @@ header {
 const PONTO_ID  = 415;   // ID interno do ponto 440156
 const PONTO_COD = '440156';
 
-// Mapa de linhaId → nome da linha (confirmado via listarItinerarios)
-const NOMES_LINHA = {
-  564: '523',   // ✅ confirmado via listarItinerarios (pontoDeOrigemId:415)
-  453: '???',   // capture listarItinerarios com outros pontos para confirmar
-  454: '???',
-  403: '???',
-  470: '???',
-  562: '???',
-};
+
 
 // Pontos conhecidos na rota (fallback estático)
 const PONTOS_ROTA = [
   {
-    id:'p1',
-    nome:'Av. Talma Rodrigues Ribeiro',
+    id: 'p1',
+    nome: 'Av. Talma Rodrigues Ribeiro',
     lat: -20.18110481247275,
     lng: -40.23302581789987,
     pontoId: 415,
     cod: '440156',
     principal: false,
     municipio: 'Serra',
-    label: 'Trabalho / Ponto de chegada'
+    label: 'Fortlev',
+    linhas: [564]          // 523
   },
   {
-    id:'p2',
-    nome:'Av. José Moreira Martins Rato',
+    id: 'p2',
+    nome: 'Av. José Moreira Martins Rato',
     lat: -20.243178235455098,
     lng: -40.26885379229531,
     pontoId: 116,
     cod: '440098',
     principal: true,
     municipio: 'Serra',
-    label: 'Minha casa / Ponto de saída'
+    label: 'Casa Daniel',
+    linhas: [564]          // 523
+  },
+  {
+    id: 'p3',
+    nome: 'Av. Nossa Senhora dos Navegantes',
+    lat: -20.3152009222374,
+    lng: -40.291424627665,
+    pontoId: 625,
+    cod: '110146',
+    principal: false,
+    municipio: 'Vitória',
+    label: 'Wine',
+    linhas: [817, 564]     // 211, 523
+  },
+  {
+    id: 'p4',
+    nome: 'Av. dos Expedicionários',
+    lat: -20.260839567787617,
+    lng: -40.2581800184746,
+    pontoId: 5885,
+    cod: '110980v',
+    principal: false,
+    municipio: 'Vitória',
+    label: 'Casa Giu',
+    linhas: [817, 792]     // 211, 103
   },
 ];
+
+// Mapa de linhaId → nome da linha (completo)
+const NOMES_LINHA = {
+  564: '523',   // ✅ T. Jacaraipe / T. Jardim América
+  817: '211',   // ✅ Santo André / Jardim Camburi
+  792: '103',   // ✅ Mario Cypreste / Jardim Camburi
+};
 
 // ═══════════════════════════════════════════════════════
 // ESTADO
@@ -510,6 +652,8 @@ let onibusSelecionado    = null;
 // ═══════════════════════════════════════════════════════
 // RELÓGIO
 // ═══════════════════════════════════════════════════════
+window._splashStart = Date.now();
+
 setInterval(() => {
   document.getElementById('clock').textContent =
     new Date().toLocaleTimeString('pt-BR',{hour12:false});
@@ -521,7 +665,7 @@ document.getElementById('clock').textContent =
 // MAPA
 // ═══════════════════════════════════════════════════════
 function initMap() {
-  MAP = L.map('map',{zoomControl:false}).setView([-20.212,-40.251],13);
+  MAP = L.map('map',{zoomControl:false}).setView([-20.255,-40.262],12);
 
   // Tile layer: Google Maps (sem restrição de referer)
   L.tileLayer('https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}',{
@@ -534,7 +678,15 @@ function initMap() {
 
   PONTOS_ROTA.forEach(plotarPonto);
 
-  document.getElementById('loading').classList.add('hide');
+  // Garantir mínimo de 2.5s para a animação da splash ser vista completamente
+  const _splashStart = window._splashStart || Date.now();
+  const _elapsed = Date.now() - _splashStart;
+  const _minDuration = 2500;
+  const _delay = Math.max(0, _minDuration - _elapsed);
+
+  setTimeout(() => {
+    document.getElementById('loading').classList.add('hide');
+  }, _delay);
 
   // Lazy loading desativado — apenas pontos favoritos
 }
@@ -843,10 +995,16 @@ async function carregarEstimativas(ponto) {
 
   try {
     // Usar /api/estimativas (Vercel serverless) como proxy para evitar CORS
+    // Usar a primeira linha favorita do ponto, ou buscar todas
+    const linhaId = ponto.linhas?.[0] || null;
+    const body = linhaId
+      ? { pontoDeOrigemId: ponto.pontoId, linhaId }
+      : { pontoDeOrigemId: ponto.pontoId };
+
     const res = await fetch('/api/estimativas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(8000)
     });
 
@@ -889,9 +1047,11 @@ function mostrarSkeleton() {
 
 function renderEstimativas(data, ponto) {
   const agora   = data.horarioDoServidor || Date.now();
-  const LINHAS_FILTRO = [564]; // somente linha 523
-  const lista   = (data.estimativas || [])
-    .filter(e => e.horarioNaOrigem > agora && LINHAS_FILTRO.includes(e.linhaId))
+  // Filtrar pelas linhas favoritas do ponto ativo
+  const linhasFiltro = pontoAtivo?.linhas || [];
+  const lista = (data.estimativas || [])
+    .filter(e => e.horarioNaOrigem > agora &&
+      (linhasFiltro.length === 0 || linhasFiltro.includes(e.linhaId)))
     .sort((a,b) => a.horarioNaOrigem - b.horarioNaOrigem)
     .slice(0, 10);
 
@@ -1147,6 +1307,7 @@ async function ativarSino(est, pontoId, pontoNome, diffMinAtual) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pontoDeOrigemId: pontoId, linhaId: est.linhaId }),
+      // linhaId específico do ônibus monitorado
         signal: AbortSignal.timeout(8000)
       });
       const data = await res.json();
@@ -1295,11 +1456,9 @@ const ROTA_IDA  = [[-20.034109, -40.159628], [-20.03369, -40.161177], [-20.03465
 // Sentido VOLTA: Av.José Moreira → Av.Talma → T.Jardim América → T.Jacaraipe
 const ROTA_VOLTA = [[-20.243273, -40.268719], [-20.24355, -40.268591], [-20.243523, -40.268746], [-20.241282, -40.271708], [-20.240812, -40.272765], [-20.240853, -40.273435], [-20.240599, -40.273682], [-20.240074, -40.273677], [-20.240452, -40.273069], [-20.238913, -40.271696], [-20.236906, -40.272599], [-20.235203, -40.271722], [-20.233666, -40.271655], [-20.231764, -40.271476], [-20.229546, -40.270257], [-20.226897, -40.269583], [-20.22583, -40.268278], [-20.224236, -40.267867], [-20.217732, -40.267484], [-20.209995, -40.265417], [-20.209055, -40.264072], [-20.207849, -40.262473], [-20.206072, -40.26098], [-20.201154, -40.257891], [-20.198644, -40.256184], [-20.196712, -40.255396], [-20.195778, -40.255275], [-20.196326, -40.254314], [-20.195531, -40.252549], [-20.194276, -40.252215], [-20.193795, -40.250965], [-20.194185, -40.246793], [-20.193017, -40.244384], [-20.189196, -40.244251], [-20.185802, -40.24407], [-20.185424, -40.243352], [-20.184877, -40.240959], [-20.182063, -40.234882], [-20.179429, -40.229235], [-20.177002, -40.225049], [-20.175165, -40.220852], [-20.173139, -40.219236], [-20.170357, -40.214188], [-20.169855, -40.211164], [-20.168635, -40.206526], [-20.167132, -40.203474], [-20.165713, -40.19882], [-20.162132, -40.196543], [-20.159011, -40.196311], [-20.158318, -40.195416], [-20.159092, -40.194149], [-20.15806, -40.192879], [-20.156534, -40.190982], [-20.157236, -40.188957], [-20.158206, -40.187391], [-20.157075, -40.185434], [-20.157621, -40.184654], [-20.159461, -40.186276], [-20.157075, -40.185434], [-20.155113, -40.18605], [-20.152832, -40.186239], [-20.149631, -40.186123], [-20.147022, -40.185697], [-20.144297, -40.184969], [-20.142681, -40.184521], [-20.14066, -40.184013], [-20.137541, -40.183843], [-20.135839, -40.183787], [-20.13889, -40.182302], [-20.142783, -40.182812], [-20.141312, -40.184169], [-20.138189, -40.183868], [-20.136487, -40.183815], [-20.133169, -40.183587], [-20.126555, -40.180806], [-20.115648, -40.176111], [-20.110318, -40.174077], [-20.105025, -40.175661], [-20.103024, -40.17582], [-20.092957, -40.176432], [-20.083925, -40.176561], [-20.078267, -40.175792], [-20.07551, -40.175375], [-20.074705, -40.176143], [-20.074036, -40.177214], [-20.070642, -40.182301], [-20.070142, -40.183123], [-20.069471, -40.183826], [-20.067479, -40.184648], [-20.064675, -40.185557], [-20.063296, -40.185911], [-20.061234, -40.188436], [-20.059747, -40.190219], [-20.057417, -40.191564], [-20.057087, -40.191834], [-20.05689, -40.192129], [-20.056191, -40.192415], [-20.054385, -40.192767], [-20.052457, -40.192148], [-20.050638, -40.191471], [-20.048194, -40.190563], [-20.043253, -40.187929], [-20.03801, -40.18347], [-20.036675, -40.18212], [-20.037064, -40.175843], [-20.036454, -40.17374], [-20.035428, -40.168873], [-20.034003, -40.165076], [-20.034659, -40.162817], [-20.03369, -40.161177], [-20.034109, -40.159628]];
 
-// Mapeamento de itinerarioId → sentido (confirmado via API Geocontrol)
-// bandeira "TERMINAL JACARAIPE" = IDA (Jacaraipe → Jardim América → Vitória)
-// bandeira "TERMINAL JARDIM AMERICA" = VOLTA (Vitória → Jardim América → Jacaraipe)
-const ITINS_IDA   = new Set([4695]); // adicione outros IDs IDA conforme descobrir
-const ITINS_VOLTA = new Set([5471, 5472]); // IDs VOLTA
+// Mapeamento de itinerarioId → sentido
+const ITINS_IDA   = new Set([4695]);
+const ITINS_VOLTA = new Set([5471, 5472]);
 
 function getSentido(itinerarioId) {
   if (ITINS_IDA.has(itinerarioId))   return 'ida';
