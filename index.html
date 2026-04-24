@@ -981,7 +981,7 @@ function abrirPonto(id) {
   carregarEstimativas(p);
 
   // Auto-refresh a cada 30s
-  autoRefreshTimer = setInterval(() => carregarEstimativas(p), 30000);
+  autoRefreshTimer = setInterval(() => carregarEstimativas(p), 20000);
 }
 
 async function carregarEstimativas(ponto) {
@@ -1357,7 +1357,7 @@ async function ativarSino(est, pontoId, pontoNome, diffMinAtual) {
     } catch(e) {
       console.warn('[Sino] Erro:', e.message);
     }
-  }, 15000);
+  }, 20000);
 
   sinoTimers.set(chave, timer);
 
@@ -1518,7 +1518,7 @@ async function abrirModoFoco(est, pontoId, pontoNome, pontoLat, pontoLng) {
   await _atualizarFoco();
 
   if (focoTimer) clearInterval(focoTimer);
-  focoTimer = setInterval(_atualizarFoco, 10000);
+  focoTimer = setInterval(_atualizarFoco, 20000);
 }
 
 async function _atualizarFoco() {
