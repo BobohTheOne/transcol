@@ -1126,22 +1126,45 @@ let FOCO_MAP = null, focoOnibusMark = null, focoPontoMark = null;
 let focoPolylines = [], focoTimer = null, focoEstimativa = null;
 let focoPontoId = null, focoPontoLat = null, focoPontoLng = null;
 
-// Rota real da linha 523: T.Jacaraipe → Vitória → T.Jardim América (via Beira Mar)
-const ROTA_523 = [
-  [-20.0821,-40.0736],[-20.0873,-40.0798],[-20.0914,-40.0843],
-  [-20.0968,-40.0921],[-20.1022,-40.1012],[-20.1089,-40.1098],
-  [-20.1154,-40.1203],[-20.1210,-40.1289],[-20.1287,-40.1356],
-  [-20.1352,-40.1434],[-20.1432,-40.1512],[-20.1489,-40.1598],
-  [-20.1567,-40.1689],[-20.1635,-40.1754],[-20.1703,-40.1821],
-  [-20.1780,-40.1934],[-20.1854,-40.2043],[-20.1920,-40.2156],
-  [-20.1977,-40.2268],[-20.2015,-40.2334],[-20.2043,-40.2401],
-  [-20.2098,-40.2478],[-20.2156,-40.2534],[-20.2201,-40.2578],
-  [-20.2248,-40.2612],[-20.2310,-40.2645],[-20.2431,-40.2688],
-  [-20.2510,-40.2701],[-20.2580,-40.2720],
-];
+// Cache de rota OSRM (roteamento real pelas ruas)
+const _rotaCache = {};
 
-// Sentido volta: Vitória → Jacaraipe (passa pelo 440156)
-const ROTA_523_VOLTA = [...ROTA_523].reverse();
+// Waypoints chave da linha 523 (lng,lat para OSRM)
+const WP_IDA   = '-40.0736,-20.0821;-40.1008,-20.1034;-40.1512,-20.1432;-40.1689,-20.1567;-40.2330,-20.1811;-40.2688,-20.2431';
+const WP_VOLTA = '-40.2688,-20.2431;-40.2330,-20.1811;-40.1689,-20.1567;-40.1512,-20.1432;-40.1008,-20.1034;-40.0736,-20.0821';
+
+// Fallback (linha reta entre pontos chave) caso OSRM falhe
+const ROTA_FB_IDA = [
+  [-20.0821,-40.0736],[-20.0978,-40.0923],[-20.1034,-40.1008],
+  [-20.1143,-40.1134],[-20.1356,-40.1456],[-20.1432,-40.1512],
+  [-20.1489,-40.1598],[-20.1567,-40.1689],[-20.1623,-40.1834],
+  [-20.1778,-40.2234],[-20.1811,-40.2330],[-20.2201,-40.2578],
+  [-20.2310,-40.2645],[-20.2431,-40.2688],
+];
+const ROTA_FB_VOLTA = [...ROTA_FB_IDA].reverse();
+
+async function buscarRota(pontoId) {
+  const key = pontoId === 116 ? 'ida' : 'volta';
+  if (_rotaCache[key]) return _rotaCache[key];
+
+  const wp = pontoId === 116 ? WP_IDA : WP_VOLTA;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${wp}?overview=full&geometries=geojson`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+    if (data.code !== 'Ok') throw new Error(data.code);
+    // OSRM retorna [lng,lat] → converter para [lat,lng] (Leaflet)
+    const rota = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    _rotaCache[key] = rota;
+    console.log('✅ Rota OSRM carregada:', key, rota.length, 'pontos');
+    return rota;
+  } catch(e) {
+    console.warn('⚠️ OSRM indisponível, usando fallback:', e.message);
+    const fb = pontoId === 116 ? ROTA_FB_IDA : ROTA_FB_VOLTA;
+    _rotaCache[key] = fb;
+    return fb;
+  }
+}
 
 function interpolarPos(rota, prog) {
   const n = rota.length - 1;
@@ -1246,16 +1269,19 @@ async function _atualizarFoco() {
   }
 }
 
-function _desenharTrajeto(est) {
+let _rotaDesenhadaKey = null; // controla quando reajustar zoom
+
+async function _desenharTrajeto(est) {
+  // Buscar rota real via OSRM (com cache — só busca uma vez)
+  const rota = await buscarRota(focoPontoId);
+  const progresso = Math.min(est.busStopPosition / (est.busStopFinalPosition || 35000), 0.99);
+  const splitIdx = Math.max(1, Math.floor(progresso * (rota.length - 1)));
+
   // Remover polylines anteriores
   focoPolylines.forEach(p => p.remove());
   focoPolylines = [];
 
-  const rota = focoPontoId === 116 ? ROTA_523 : ROTA_523_VOLTA;
-  const progresso = Math.min(est.busStopPosition / (est.busStopFinalPosition || 35000), 0.99);
-  const splitIdx = Math.max(1, Math.floor(progresso * (rota.length - 1)));
-
-  // Trecho percorrido (cinza claro)
+  // Trecho percorrido (cinza)
   const percorrida = L.polyline(rota.slice(0, splitIdx + 1), {
     color: '#b0bcd4', weight: 5, opacity: .7
   }).addTo(FOCO_MAP);
@@ -1270,27 +1296,35 @@ function _desenharTrajeto(est) {
   // Posição interpolada do ônibus
   const [busLat, busLng] = interpolarPos(rota, progresso);
 
-  if (focoOnibusMark) focoOnibusMark.remove();
-  focoOnibusMark = L.marker([busLat, busLng], {
-    icon: L.divIcon({
-      className: '',
-      html: `<div style="background:#1a6ef5;border:3px solid #fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(26,110,245,.25),0 3px 12px rgba(0,0,0,.3);font-size:17px">🚌</div>`,
-      iconSize:[34,34], iconAnchor:[17,17]
-    }),
-    zIndexOffset: 1000
-  }).addTo(FOCO_MAP);
+  // Mover marcador do ônibus sem resetar zoom
+  if (focoOnibusMark) {
+    focoOnibusMark.setLatLng([busLat, busLng]);
+  } else {
+    focoOnibusMark = L.marker([busLat, busLng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="background:#1a6ef5;border:3px solid #fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(26,110,245,.25),0 3px 12px rgba(0,0,0,.3);font-size:17px;animation:pulseOnibus 1.5s ease-in-out infinite">🚌</div>`,
+        iconSize:[34,34], iconAnchor:[17,17]
+      }),
+      zIndexOffset: 1000
+    }).addTo(FOCO_MAP);
+    focoOnibusMark.bindPopup(`
+      <div style="font-family:var(--sans);padding:4px;min-width:160px">
+        <div style="font-weight:700;font-size:13px">Linha ${NOMES_LINHA[est.linhaId]||est.linhaId} · ${est.veiculo}</div>
+        <div style="font-size:11px;color:#666;margin-top:3px;font-family:var(--mono)">${Math.round(progresso*100)}% do percurso</div>
+      </div>
+    `);
+  }
 
-  focoOnibusMark.bindPopup(`
-    <div style="font-family:var(--sans);padding:4px;min-width:160px">
-      <div style="font-weight:700;font-size:13px">Linha ${NOMES_LINHA[est.linhaId]||est.linhaId} · ${est.veiculo}</div>
-      <div style="font-size:11px;color:#666;margin-top:3px;font-family:var(--mono)">${Math.round((est.busStopPosition/est.busStopFinalPosition)*100)}% do percurso</div>
-    </div>
-  `);
-
-  // Ajustar bounds
-  const bounds = L.latLngBounds([[focoPontoLat, focoPontoLng],[busLat, busLng]]);
-  rota.forEach(p => bounds.extend(p));
-  FOCO_MAP.fitBounds(bounds, { padding:[50,50], maxZoom:14 });
+  // Ajustar zoom APENAS na primeira vez que a rota é carregada
+  const rotaKey = focoPontoId + '_' + est.itinerarioId;
+  if (_rotaDesenhadaKey !== rotaKey) {
+    _rotaDesenhadaKey = rotaKey;
+    const bounds = L.latLngBounds(rota);
+    bounds.extend([focoPontoLat, focoPontoLng]);
+    bounds.extend([busLat, busLng]);
+    FOCO_MAP.fitBounds(bounds, { padding:[50,50], maxZoom:14 });
+  }
 }
 
 function sairModoFoco() {
@@ -1298,6 +1332,7 @@ function sairModoFoco() {
   document.getElementById('modo-foco').classList.remove('active');
   if (FOCO_MAP) { FOCO_MAP.remove(); FOCO_MAP = null; }
   focoOnibusMark = null; focoPontoMark = null; focoPolylines = [];
+  _rotaDesenhadaKey = null;
 }
 
 window.addEventListener('load', initMap);
