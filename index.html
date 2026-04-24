@@ -807,19 +807,13 @@ async function carregarEstimativas(ponto) {
   document.getElementById('refresh-lbl').textContent = 'Atualizando...';
 
   try {
-    const res = await fetch(
-      'https://gvbus-previsao.geocontrol.com.br/pontual-previsao/svc/estimativas/obterEstimativasPorOrigem',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Origin': 'https://gvbus-previsao.geocontrol.com.br',
-          'Referer': 'https://gvbus-previsao.geocontrol.com.br/previsao/desktop.html',
-        },
-        body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
-        signal: AbortSignal.timeout(8000)
-      }
-    );
+    // Usar /api/estimativas (Vercel serverless) como proxy para evitar CORS
+    const res = await fetch('/api/estimativas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pontoDeOrigemId: ponto.pontoId, linhaId: 564 }),
+      signal: AbortSignal.timeout(8000)
+    });
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -928,7 +922,7 @@ function renderEstimativas(data, ponto) {
     </div>`;
 
   // Atualizar barra flutuante com a próxima chegada
-  if (proxIdx !== -1) {
+  if (lista.length > 0) {
     mostrarBusBar(nomeLinha, diffMin, prox.veiculo, prox);
   }
 }
