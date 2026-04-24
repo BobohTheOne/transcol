@@ -219,6 +219,100 @@ header {
 }
 .erro-box strong { display:block; margin-bottom:4px; }
 
+/* ── Marcadores de ponto dinâmico ── */
+.marker-ponto-dot {
+  width:28px; height:28px;
+  background:#fff;
+  border:2.5px solid #1a6ef5;
+  border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg);
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .15s, box-shadow .15s;
+}
+.marker-ponto-dot:hover {
+  box-shadow:0 4px 16px rgba(26,110,245,.35);
+}
+.marker-ponto-dot .inner {
+  transform:rotate(45deg);
+  font-size:12px;
+}
+.marker-ponto-dot.favorito {
+  border-color:#f5820a;
+  background:#fff8f0;
+}
+.marker-ponto-dot.favorito .inner::after { content:'⭐'; }
+
+/* Barra flutuante de ônibus selecionado */
+#bus-bar {
+  position:fixed;
+  bottom: calc(52vh + 8px);
+  left:16px; right:68px;
+  background:var(--surface);
+  border:1.5px solid var(--accent);
+  border-radius:16px;
+  padding:12px 16px;
+  box-shadow:var(--shadow-lg);
+  z-index:450;
+  display:none;
+  align-items:center;
+  gap:12px;
+  transition:all .25s;
+}
+#bus-bar.visible { display:flex; }
+.bus-bar-linha {
+  font-family:var(--mono);
+  font-size:13px; font-weight:600;
+  padding:4px 10px;
+  background:rgba(26,110,245,.1);
+  color:var(--accent);
+  border:1px solid rgba(26,110,245,.25);
+  border-radius:8px;
+  flex-shrink:0;
+}
+.bus-bar-info { flex:1; min-width:0; }
+.bus-bar-tempo {
+  font-size:18px; font-weight:800;
+  color:var(--text); line-height:1;
+}
+.bus-bar-tempo span { font-size:12px; font-weight:500; color:var(--muted); }
+.bus-bar-desc { font-size:11px; color:var(--muted); margin-top:2px; font-family:var(--mono); }
+.bus-bar-close {
+  width:28px; height:28px;
+  border-radius:8px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:14px; flex-shrink:0;
+  color:var(--muted);
+}
+.bus-bar-close:hover { background:var(--border); }
+
+/* Loading de pontos no mapa */
+#map-loading {
+  position:absolute;
+  top:66px; left:50%; transform:translateX(-50%);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:6px 14px;
+  font-size:12px; font-weight:600;
+  color:var(--muted);
+  box-shadow:var(--shadow);
+  z-index:400;
+  display:none;
+  align-items:center;
+  gap:6px;
+}
+#map-loading.visible { display:flex; }
+.map-spin {
+  width:12px; height:12px;
+  border:2px solid var(--border);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+
 /* ── Leaflet ── */
 .leaflet-popup-content-wrapper { border-radius:14px !important; box-shadow:var(--shadow-lg) !important; font-family:var(--sans) !important; padding:0 !important; overflow:hidden; }
 .leaflet-popup-content { margin:0 !important; }
@@ -255,6 +349,22 @@ header {
 
   <div id="map"></div>
   <div id="fab-geo" onclick="centerUser()">📍</div>
+
+  <!-- Barra de ônibus selecionado -->
+  <div id="bus-bar">
+    <div class="bus-bar-linha" id="bb-linha">523</div>
+    <div class="bus-bar-info">
+      <div class="bus-bar-tempo" id="bb-tempo">– <span>min</span></div>
+      <div class="bus-bar-desc" id="bb-desc">Selecione um ônibus no mapa</div>
+    </div>
+    <div class="bus-bar-close" onclick="fecharBusBar()">✕</div>
+  </div>
+
+  <!-- Indicador de carregamento de pontos -->
+  <div id="map-loading">
+    <div class="map-spin"></div>
+    Carregando pontos...
+  </div>
 
   <div id="sheet">
     <div class="sheet-handle" onclick="toggleSheet()"></div>
@@ -346,6 +456,15 @@ let MAP, userMarker, userPos = null;
 let pontoAtivo = null;
 let autoRefreshTimer = null;
 
+// Controle de pontos dinâmicos no mapa
+const pontosCarregados   = new Map();   // id → {marker, dados}
+const areasBloqueadas    = new Set();   // chave "lat3_lng3" de células já carregadas
+let   carregandoArea     = false;
+let   moveTimer          = null;
+
+// Ônibus selecionado (barra flutuante)
+let onibusSelecionado    = null;
+
 // ═══════════════════════════════════════════════════════
 // RELÓGIO
 // ═══════════════════════════════════════════════════════
@@ -374,6 +493,158 @@ function initMap() {
   PONTOS_ROTA.forEach(plotarPonto);
 
   document.getElementById('loading').classList.add('hide');
+
+  // Eventos do mapa para lazy loading
+  MAP.on('moveend zoomend', () => {
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(verificarECarregarArea, 400);
+  });
+}
+
+// ── LAZY LOADING DE PONTOS ───────────────────────────────
+const RAIO_KM = 3; // km de raio para carregar pontos
+const CELL_SIZE = 0.027; // ~3km em graus
+
+function cellKey(lat, lng) {
+  return `${Math.floor(lat / CELL_SIZE)}_${Math.floor(lng / CELL_SIZE)}`;
+}
+
+function verificarECarregarArea() {
+  if (!MAP) return;
+  const center = MAP.getCenter();
+  const lat = center.lat, lng = center.lng;
+
+  // Verificar células ao redor (3x3 grid)
+  const celulas = [];
+  for (let dLat = -1; dLat <= 1; dLat++) {
+    for (let dLng = -1; dLng <= 1; dLng++) {
+      const cLat = lat + dLat * CELL_SIZE;
+      const cLng = lng + dLng * CELL_SIZE;
+      const key = cellKey(cLat, cLng);
+      if (!areasBloqueadas.has(key)) {
+        celulas.push({ lat: cLat, lng: cLng, key });
+      }
+    }
+  }
+
+  if (celulas.length === 0) return; // tudo já carregado
+  carregarPontosArea(lat, lng, celulas);
+}
+
+async function carregarPontosArea(lat, lng, celulas) {
+  if (carregandoArea) return;
+  carregandoArea = true;
+
+  const loading = document.getElementById('map-loading');
+  loading.classList.add('visible');
+
+  celulas.forEach(c => areasBloqueadas.add(c.key));
+
+  const delta  = 0.027;
+  const lngMin = lng - delta;
+  const latMin = lat - delta;
+  const lngMax = lng + delta;
+  const latMax = lat + delta;
+
+  const GEO_HEADERS = {
+    'Content-Type': 'application/json',
+    'Origin': 'https://gvbus-previsao.geocontrol.com.br',
+    'Referer': 'https://gvbus-previsao.geocontrol.com.br/previsao/desktop.html',
+  };
+
+  try {
+    // PASSO 1: buscar IDs dos pontos na área (envelope)
+    const res1 = await fetch(
+      'https://gvbus-previsao.geocontrol.com.br/pontual-previsao/svc/json/db/pesquisarPontosDeParada',
+      {
+        method: 'POST',
+        headers: GEO_HEADERS,
+        body: JSON.stringify({ envelope: [lngMin, latMin, lngMax, latMax] }),
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+    if (!res1.ok) throw new Error('HTTP ' + res1.status);
+    const data1  = await res1.json();
+    const todos  = data1.pontosDeParada || [];
+    const novos  = todos.filter(id => !pontosCarregados.has(id));
+
+    console.log(`📍 ${todos.length} pontos na área, ${novos.length} novos`);
+    if (novos.length === 0) { loading.classList.remove('visible'); carregandoArea = false; return; }
+
+    // PASSO 2: buscar detalhes dos IDs novos
+    const res2 = await fetch(
+      'https://gvbus-previsao.geocontrol.com.br/pontual-previsao/svc/json/db/listarPontosDeParada',
+      {
+        method: 'POST',
+        headers: GEO_HEADERS,
+        body: JSON.stringify({ listaIds: novos }),
+        signal: AbortSignal.timeout(10000)
+      }
+    );
+    if (!res2.ok) throw new Error('HTTP detalhes ' + res2.status);
+    const data2  = await res2.json();
+    const pontos = data2.pontosDeParada || [];
+
+    pontos.forEach(p => adicionarPontoMapa(p));
+    console.log(`✅ ${pontos.length} pontos adicionados ao mapa`);
+
+  } catch(e) {
+    console.warn('Erro ao carregar pontos:', e.message);
+    celulas.forEach(c => areasBloqueadas.delete(c.key));
+  }
+
+  loading.classList.remove('visible');
+  carregandoArea = false;
+}
+
+function adicionarPontoMapa(p) {
+  if (pontosCarregados.has(p.id)) return; // já existe
+
+  const isFav  = PONTOS_ROTA.some(r => r.pontoId === p.id);
+  const nome   = p.logradouro || 'Ponto ' + p.identificador;
+  const desc   = p.descricao  ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">${p.descricao}</div>` : '';
+  const cod    = p.identificador;
+  const cidade = p.municipio || '';
+
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="marker-ponto-dot ${isFav ? 'favorito' : ''}">
+             <span class="inner">${isFav ? '⭐' : '🚏'}</span>
+           </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [10, 28],
+    popupAnchor: [4, -30]
+  });
+
+  const marker = L.marker([p.latitude, p.longitude], { icon }).addTo(MAP);
+
+  // Sanitizar nome para uso no onclick
+  const nomeSafe = nome.replace(/'/g, "\'").replace(/`/g, '\`');
+
+  marker.bindPopup(`<div class="pop-inner">
+    <div class="pop-title">${nome}</div>
+    ${desc}
+    <div class="pop-cod">Cód. ${cod} · ${cidade}</div>
+    <button class="pop-btn" onclick="abrirPontoDinamico(${p.id}, '${cod}', '${nomeSafe}', ${p.latitude}, ${p.longitude})">
+      Ver previsão →
+    </button>
+  </div>`, { maxWidth: 260 });
+
+  pontosCarregados.set(p.id, { marker, dados: p });
+}
+
+// Abrir ponto dinâmico (descoberto pelo lazy loading)
+function abrirPontoDinamico(pontoId, cod, nome, lat, lng) {
+  MAP.closePopup();
+  MAP.flyTo([lat, lng], 16, { duration: .9 });
+
+  // Adicionar ao PONTOS_ROTA temporariamente
+  const tempId = 'dyn_' + pontoId;
+  if (!PONTOS_ROTA.find(p => p.id === tempId)) {
+    PONTOS_ROTA.push({ id: tempId, nome, lat, lng, pontoId, cod, principal: false, municipio: '' });
+  }
+
+  abrirPonto(tempId);
 }
 
 function plotarPonto(p) {
@@ -463,6 +734,9 @@ function usarPos(lat,lng,demo) {
 
   renderLista(ordenados);
   expandSheet();
+
+  // Carregar pontos ao redor da posição do usuário
+  setTimeout(verificarECarregarArea, 600);
 }
 
 function centerUser() {
@@ -652,6 +926,11 @@ function renderEstimativas(data, ponto) {
       ${heroHtml}
       ${lista.length > 1 ? `<div class="est-label" style="margin-top:14px;">A seguir</div>${rows}` : ''}
     </div>`;
+
+  // Atualizar barra flutuante com a próxima chegada
+  if (proxIdx !== -1) {
+    mostrarBusBar(nomeLinha, diffMin, prox.veiculo, prox);
+  }
 }
 
 function renderSemProxy(ponto, msg) {
@@ -736,6 +1015,44 @@ function expandSheet()  { document.getElementById('sheet').classList.add('expand
 // INIT
 // ═══════════════════════════════════════════════════════
 window.abrirPonto = abrirPonto;
+window.abrirPontoDinamico = abrirPontoDinamico;
+window.fecharBusBar = fecharBusBar;
+
+// ── BARRA FLUTUANTE DE ÔNIBUS ────────────────────────────
+function mostrarBusBar(linha, diffMin, veiculo, extras) {
+  const bar = document.getElementById('bus-bar');
+  const bbLinha = document.getElementById('bb-linha');
+  const bbTempo = document.getElementById('bb-tempo');
+  const bbDesc  = document.getElementById('bb-desc');
+
+  bbLinha.textContent = 'Linha ' + linha;
+  bbTempo.innerHTML   = diffMin + '<span> min</span>';
+
+  const extrasStr = [];
+  if (extras?.accessibility)  extrasStr.push('♿');
+  if (extras?.arCondicionado) extrasStr.push('❄️');
+  if (extras?.wifi)           extrasStr.push('📶');
+
+  bbDesc.textContent = `Veículo ${veiculo}${extrasStr.length ? ' · ' + extrasStr.join(' ') : ''}`;
+
+  // Cor conforme urgência
+  bar.style.borderColor = diffMin <= 3 ? 'var(--danger)' : diffMin <= 8 ? 'var(--warn)' : 'var(--accent)';
+  bbTempo.style.color   = diffMin <= 3 ? 'var(--danger)' : diffMin <= 8 ? 'var(--warn)' : 'var(--text)';
+
+  bar.classList.add('visible');
+
+  // Ajustar posição do FAB para não sobrepor
+  document.getElementById('fab-geo').style.bottom = 'calc(52vh + 76px)';
+}
+
+function fecharBusBar() {
+  document.getElementById('bus-bar').classList.remove('visible');
+  document.getElementById('fab-geo').style.bottom = 'calc(52vh + 16px)';
+  onibusSelecionado = null;
+}
+
+// Chamar mostrarBusBar ao renderizar estimativas (primeira da lista)
+const _renderEstimativasOrig = renderEstimativas;
 window.addEventListener('load', initMap);
 </script>
 </body>
