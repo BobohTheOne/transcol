@@ -249,30 +249,7 @@ header {
 
 /* barra removida */
 
-/* Loading de pontos no mapa */
-#map-loading {
-  position:absolute;
-  top:66px; left:50%; transform:translateX(-50%);
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:6px 14px;
-  font-size:12px; font-weight:600;
-  color:var(--muted);
-  box-shadow:var(--shadow);
-  z-index:400;
-  display:none;
-  align-items:center;
-  gap:6px;
-}
-#map-loading.visible { display:flex; }
-.map-spin {
-  width:12px; height:12px;
-  border:2px solid var(--border);
-  border-top-color:var(--accent);
-  border-radius:50%;
-  animation:spin .7s linear infinite;
-}
+
 
 /* ── Modo foco (ônibus selecionado) ── */
 #modo-foco {
@@ -430,11 +407,7 @@ header {
   <div id="map"></div>
   <div id="fab-geo" onclick="centerUser()">📍</div>
 
-  <!-- Indicador de carregamento de pontos -->
-  <div id="map-loading">
-    <div class="map-spin"></div>
-    Carregando pontos...
-  </div>
+
 
   <div id="sheet">
     <div class="sheet-handle" onclick="toggleSheet()"></div>
@@ -526,11 +499,7 @@ let MAP, userMarker, userPos = null;
 let pontoAtivo = null;
 let autoRefreshTimer = null;
 
-// Controle de pontos dinâmicos no mapa
-const pontosCarregados   = new Map();   // id → {marker, dados}
-const areasBloqueadas    = new Set();   // chave "lat3_lng3" de células já carregadas
-let   carregandoArea     = false;
-let   moveTimer          = null;
+
 
 // Ônibus selecionado (barra flutuante)
 let onibusSelecionado    = null;
@@ -564,11 +533,7 @@ function initMap() {
 
   document.getElementById('loading').classList.add('hide');
 
-  // Eventos do mapa para lazy loading
-  MAP.on('moveend zoomend', () => {
-    clearTimeout(moveTimer);
-    moveTimer = setTimeout(verificarECarregarArea, 400);
-  });
+  // Lazy loading desativado — apenas pontos favoritos
 }
 
 // ── LAZY LOADING DE PONTOS ───────────────────────────────
@@ -804,9 +769,6 @@ function usarPos(lat,lng,demo) {
 
   renderLista(ordenados);
   expandSheet();
-
-  // Carregar pontos ao redor da posição do usuário
-  setTimeout(verificarECarregarArea, 600);
 }
 
 function centerUser() {
